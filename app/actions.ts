@@ -7,13 +7,16 @@ import { todayYMDVancouver } from '@/lib/dates';
 
 export async function createTodayAction() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
   const today = todayYMDVancouver();
 
   // Idempotent create: insert-or-update on unique(date).
   // Using upsert avoids race/duplicate issues and returns the row.
   const { error } = await supabase
     .from('days')
-    .upsert({ date: today }, { onConflict: 'date' })
+    .upsert({ user_id: user.id, date: today }, { onConflict: 'user_id,date' })
     .select('id')
     .single();
 
@@ -23,11 +26,15 @@ export async function createTodayAction() {
 
 export async function addEntryAction(formData: FormData) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
   const today = todayYMDVancouver();
 
   const { data: day, error: dayErr } = await supabase
     .from('days')
     .select('id')
+    .eq('user_id', user.id)
     .eq('date', today)
     .maybeSingle();
 

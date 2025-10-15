@@ -7,12 +7,14 @@ import { createTodayAction, addEntryAction } from './actions';
 
 export default async function Home() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   const today = todayYMDVancouver();
 
   // Fetch today's day + entries (read-only; GET has no side effects)
   const { data: day } = await supabase
     .from('days')
     .select('id, date')
+    .eq('user_id', user?.id ?? null)
     .eq('date', today)
     .maybeSingle();
 
