@@ -34,7 +34,6 @@ export async function addEntryAction(formData: FormData) {
   const { data: day, error: dayErr } = await supabase
     .from('days')
     .select('id')
-    .eq('user_id', user.id)
     .eq('date', today)
     .maybeSingle();
 

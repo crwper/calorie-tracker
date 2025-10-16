@@ -14,7 +14,6 @@ export default async function Home() {
   const { data: day } = await supabase
     .from('days')
     .select('id, date')
-    .eq('user_id', user?.id ?? null)
     .eq('date', today)
     .maybeSingle();
 
