@@ -3,7 +3,12 @@ import WhereServer from '@/components/WhereServer';
 import WhereClient from '@/components/WhereClient';
 import { todayYMDVancouver } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
-import { createTodayAction, addEntryAction, toggleEntryStatusAction, moveEntryUpAction, moveEntryDownAction } from './actions';
+import {
+  createTodayAction, addEntryAction,
+  toggleEntryStatusAction, deleteEntryAction,
+  moveEntryUpAction, moveEntryDownAction,
+  addEntryFromCatalogAction, quickAddCatalogAction
+} from './actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 
 export default async function Home() {
@@ -33,6 +38,22 @@ export default async function Home() {
     entries = data ?? [];
   }
 
+  // Fetch a small set for chips (favorites first, then newest)
+  const { data: chipItems } = await supabase
+    .from('catalog_items')
+    .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')
+    .order('is_favorite', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(6);
+
+  // Fetch a larger set of names for datalist suggestions
+  const { data: allNames } = await supabase
+    .from('catalog_items')
+    .select('name')
+   .order('is_favorite', { ascending: false })
+    .order('name', { ascending: true })
+    .limit(50);
+
   // Compute simple totals: for now, treat kcal_snapshot as kcal for the entered qty
   const totalEaten = entries
     .filter(e => e.status === 'eaten')
@@ -44,6 +65,64 @@ export default async function Home() {
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
       <h1 className="text-2xl font-bold">Today ({today})</h1>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold">Catalog</h2>
+        <div className="rounded-lg border bg-white p-4 space-y-3">
+          {/* Quick-add: "130 kibble" + Enter */}
+          <form action={quickAddCatalogAction} className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-gray-600">Quick add</label>
+              <input
+                name="q"
+                list="catalog-list"
+                className="w-full border rounded px-2 py-1 text-sm"
+                placeholder='e.g., "130 kibble" or "kibble"'
+              />
+              <datalist id="catalog-list">
+                {(allNames ?? []).map((n) => (
+                  <option key={n.name} value={n.name} />
+                ))}
+              </datalist>
+            </div>
+            <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">
+              Add
+            </button>
+          </form>
+
+          {/* Favorite/Recent chips with one-click add (×0.5 / ×1 / ×2) */}
+          <div className="flex flex-wrap gap-2">
+            {(chipItems ?? []).map((it) => (
+              <div key={it.id} className="border rounded px-2 py-1 text-xs bg-slate-50">
+                <div className="font-medium">{it.name}</div>
+                <div className="text-[11px] text-gray-600">
+                  {it.default_qty} {it.unit} • {Number(it.kcal_per_unit).toFixed(2)} kcal/{it.unit}
+                </div>
+                <div className="mt-1 flex gap-1">
+                  <form action={addEntryFromCatalogAction}>
+                    <input type="hidden" name="catalog_item_id" value={it.id} />
+                    <input type="hidden" name="mult" value="0.5" />
+                    <button className="rounded border px-2 py-0.5 hover:bg-gray-50">×0.5</button>
+                  </form>
+                  <form action={addEntryFromCatalogAction}>
+                    <input type="hidden" name="catalog_item_id" value={it.id} />
+                    <input type="hidden" name="mult" value="1" />
+                    <button className="rounded border px-2 py-0.5 hover:bg-gray-50">Add</button>
+                  </form>
+                  <form action={addEntryFromCatalogAction}>
+                    <input type="hidden" name="catalog_item_id" value={it.id} />
+                    <input type="hidden" name="mult" value="2" />
+                    <button className="rounded border px-2 py-0.5 hover:bg-gray-50">×2</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+            {(chipItems ?? []).length === 0 && (
+              <div className="text-sm text-gray-600">No catalog items yet.</div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="space-y-2">
         <h2 className="font-semibold">Day</h2>
