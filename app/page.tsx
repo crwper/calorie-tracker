@@ -1,7 +1,7 @@
 // app/page.tsx
 import WhereServer from '@/components/WhereServer';
 import WhereClient from '@/components/WhereClient';
-import { todayYMDVancouver } from '@/lib/dates';
+import { todayYMDVancouver, formatYMDLongInTZ } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
 import {
   createTodayAction, addEntryAction,
@@ -15,6 +15,7 @@ export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const today = todayYMDVancouver();
+  const friendly = formatYMDLongInTZ(today);
 
   // Fetch today's day + entries (read-only; GET has no side effects)
   const { data: day } = await supabase
@@ -56,7 +57,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
-      <h1 className="text-2xl font-bold">Today ({today})</h1>
+      <h1 className="text-2xl font-bold">{friendly}</h1>
 
       <section className="space-y-2">
         <h2 className="font-semibold">Catalog</h2>
@@ -257,9 +258,6 @@ export default async function Home() {
           </ul>
         </div>
       </section>
-
-      <WhereServer />
-      <WhereClient />
     </main>
   );
 }
