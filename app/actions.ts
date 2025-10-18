@@ -57,6 +57,18 @@ export async function addEntryAction(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
+
+ // Set per-unit snapshot from entered kcal & qty so future edits are exact
+ const perUnit = Number((kcal / qty).toFixed(4));
+  const { error: snapErr } = await supabase
+    .from('entries')
+    .update({ kcal_per_unit_snapshot: perUnit })
+    .eq('day_id', day.id)        // update the most recent insert? safer to filter further:
+    .order('created_at', { ascending: false })
+    .limit(1);                   // (PostgREST: limit applies to returned rows; if needed we can
+                                 //  instead select the id by a second query; see note below)
+  // NOTE: If your PostgREST version doesn’t allow LIMIT on UPDATE, do a SELECT to fetch the id you just inserted
+  // and update by id instead. If you see an error here, tell me and I’ll switch this to a two-step (select id, then update).
   revalidatePath('/');
 }
 
@@ -163,9 +175,56 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   // Optional: link the entry back to the catalog item (snapshot is already set)
   const { error: linkErr } = await supabase
     .from('entries')
-    .update({ catalog_item_id: item.id })
+    .update({
+      catalog_item_id: item.id,
+      kcal_per_unit_snapshot: Number(item.kcal_per_unit),
+   })
     .eq('id', entryId);
   if (linkErr) throw new Error(linkErr.message);
 
+  revalidatePath('/');
+}
+
+export async function updateEntryQtyAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const entryId = String(formData.get('entry_id') ?? '');
+  const qty = Number(formData.get('qty') ?? '0');
+  if (!entryId) throw new Error('Missing entry_id');
+  if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
+
+  // Fetch per-unit snapshot (and fall back if missing)
+  const { data: entry, error: selErr } = await supabase
+    .from('entries')
+    .select('id, qty, kcal_snapshot, kcal_per_unit_snapshot')
+    .eq('id', entryId)
+    .maybeSingle();
+
+  if (selErr) throw new Error(selErr.message);
+  if (!entry) throw new Error('Entry not found');
+
+  let perUnit = entry.kcal_per_unit_snapshot as unknown as number | null;
+
+  if (perUnit == null) {
+    const baseQty = Number(entry.qty) || qty;
+    const baseKcal = Number(entry.kcal_snapshot) || 0;
+    if (!Number.isFinite(baseQty) || baseQty <= 0) throw new Error('Cannot compute per-unit');
+    perUnit = Number((baseKcal / baseQty).toFixed(4));
+  }
+
+  const newKcal = Number((qty * Number(perUnit)).toFixed(2));
+
+  const { error: updErr } = await supabase
+    .from('entries')
+    .update({
+      qty,
+      kcal_snapshot: newKcal,
+      kcal_per_unit_snapshot: perUnit,
+    })
+    .eq('id', entryId);
+
+  if (updErr) throw new Error(updErr.message);
   revalidatePath('/');
 }

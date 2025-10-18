@@ -7,7 +7,7 @@ import {
   createTodayAction, addEntryAction,
   toggleEntryStatusAction, deleteEntryAction,
   moveEntryUpAction, moveEntryDownAction,
-  addEntryFromCatalogAction
+  addEntryFromCatalogAction, updateEntryQtyAction 
 } from './actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 
@@ -162,7 +162,24 @@ export default async function Home() {
                   <div className="text-xs text-gray-600">{e.qty} {e.unit} • {e.status}</div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {/* kcal display */}
                   <div className="text-sm">{e.kcal_snapshot} kcal</div>
+
+                  {/* Quick qty edit: narrow input + Save; submits to server action */}
+                  <form action={updateEntryQtyAction} className="flex items-center gap-1">
+                    <input type="hidden" name="entry_id" value={e.id} />
+                    <label className="text-xs text-gray-600">Qty</label>
+                    <input
+                      name="qty"
+                      type="number"
+                      step="any"
+                      min="0"
+                      inputMode="decimal"
+                      defaultValue={String(e.qty)}
+                      className="w-20 border rounded px-2 py-1 text-xs"
+                    />
+                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50">Save</button>
+                  </form>
                   <form action={toggleEntryStatusAction}>
                     <input type="hidden" name="entry_id" value={e.id} />
                     <input
