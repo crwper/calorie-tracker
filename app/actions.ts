@@ -24,51 +24,35 @@ export async function addEntryAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
-  const today = todayYMDVancouver();
-
-  const { data: day, error: dayErr } = await supabase
-    .from('days')
-    .select('id')
-    .eq('date', today)
-    .maybeSingle();
-
-  if (dayErr) throw new Error(dayErr.message);
-  if (!day) throw new Error('No day for today. Create today first.');
-
   const name = String(formData.get('name') ?? '').trim();
   const qty = Number(formData.get('qty') ?? '0');
   const unit = String(formData.get('unit') ?? '').trim();
   const kcal = Number(formData.get('kcal_snapshot') ?? '0');
-  const status = (String(formData.get('status') ?? 'planned') === 'eaten') ? 'eaten' : 'planned';
+  const status =
+    String(formData.get('status') ?? 'planned') === 'eaten' ? 'eaten' : 'planned';
 
   if (!name) throw new Error('Name required');
   if (!unit) throw new Error('Unit required');
   if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
   if (!Number.isFinite(kcal) || kcal <= 0) throw new Error('kcal must be a positive number');
 
-  // Atomic append at bottom via RPC (RLS-safe, ownership-checked)
-  const { error } = await supabase.rpc('add_entry_with_order', {
-    p_day_id: day.id,
+  const today = todayYMDVancouver();
+
+  // Ensure today exists and get its id
+  const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: today });
+  if (dayErr) throw new Error(dayErr.message);
+
+  // Atomic append + snapshot handled inside the RPC
+  const { error: insErr } = await supabase.rpc('add_entry_with_order', {
+    p_day_id: dayId,
     p_name: name,
     p_qty: qty,
     p_unit: unit,
     p_kcal: kcal,
     p_status: status,
   });
+  if (insErr) throw new Error(insErr.message);
 
-  if (error) throw new Error(error.message);
-
- // Set per-unit snapshot from entered kcal & qty so future edits are exact
- const perUnit = Number((kcal / qty).toFixed(4));
-  const { error: snapErr } = await supabase
-    .from('entries')
-    .update({ kcal_per_unit_snapshot: perUnit })
-    .eq('day_id', day.id)        // update the most recent insert? safer to filter further:
-    .order('created_at', { ascending: false })
-    .limit(1);                   // (PostgREST: limit applies to returned rows; if needed we can
-                                 //  instead select the id by a second query; see note below)
-  // NOTE: If your PostgREST version doesn’t allow LIMIT on UPDATE, do a SELECT to fetch the id you just inserted
-  // and update by id instead. If you see an error here, tell me and I’ll switch this to a two-step (select id, then update).
   revalidatePath('/');
 }
 
@@ -175,10 +159,7 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   // Optional: link the entry back to the catalog item (snapshot is already set)
   const { error: linkErr } = await supabase
     .from('entries')
-    .update({
-      catalog_item_id: item.id,
-      kcal_per_unit_snapshot: Number(item.kcal_per_unit),
-   })
+    .update({ catalog_item_id: item.id }) // RPC now sets per-unit snapshot
     .eq('id', entryId);
   if (linkErr) throw new Error(linkErr.message);
 
