@@ -87,6 +87,9 @@ export default async function Home() {
             )}
           </div>
         </div>
+        <div className="text-sm text-gray-600">
+          <a href="/catalog" className="underline">Manage catalog →</a>
+        </div>
       </section>
 
       <section className="space-y-2">
