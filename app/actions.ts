@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { todayYMDVancouver } from '@/lib/dates';
+import { todayYMDVancouver, isValidYMD } from '@/lib/dates';
 
 export async function createTodayAction() {
   const supabase = await createClient();
@@ -36,10 +36,12 @@ export async function addEntryAction(formData: FormData) {
   if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
   if (!Number.isFinite(kcal) || kcal <= 0) throw new Error('kcal must be a positive number');
 
-  const today = todayYMDVancouver();
+  // Use selected day from the form, fall back to today if missing/invalid
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
 
-  // Ensure today exists and get its id
-  const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: today });
+  // Ensure the selected day exists and get its id
+  const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: dayDate });
   if (dayErr) throw new Error(dayErr.message);
 
   // Atomic append + snapshot handled inside the RPC
@@ -53,13 +55,17 @@ export async function addEntryAction(formData: FormData) {
   });
   if (insErr) throw new Error(insErr.message);
 
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }
 
 export async function toggleEntryStatusAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
+
+  // Selected day for revalidation
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
 
   const entryId = String(formData.get('entry_id') ?? '');
   const nextStatus = String(formData.get('next_status') ?? 'planned');
@@ -73,13 +79,17 @@ export async function toggleEntryStatusAction(formData: FormData) {
     .eq('id', entryId);
 
   if (error) throw new Error(error.message);
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }
 
 export async function deleteEntryAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
+
+  // Selected day for revalidation
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
 
   const entryId = String(formData.get('entry_id') ?? '');
   if (!entryId) throw new Error('Missing entry_id');
@@ -88,7 +98,7 @@ export async function deleteEntryAction(formData: FormData) {
   const { error } = await supabase.from('entries').delete().eq('id', entryId);
   if (error) throw new Error(error.message);
 
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }
 
 export async function moveEntryUpAction(formData: FormData) {
@@ -96,12 +106,16 @@ export async function moveEntryUpAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
+  // Selected day for revalidation
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+
   const entryId = String(formData.get('entry_id') ?? '');
   if (!entryId) throw new Error('Missing entry_id');
 
   const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'up' });
   if (error) throw new Error(error.message);
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }
 
 export async function moveEntryDownAction(formData: FormData) {
@@ -109,12 +123,16 @@ export async function moveEntryDownAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
+  // Selected day for revalidation
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+
   const entryId = String(formData.get('entry_id') ?? '');
   if (!entryId) throw new Error('Missing entry_id');
 
   const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'down' });
   if (error) throw new Error(error.message);
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }
 
 export async function addEntryFromCatalogAction(formData: FormData) {
@@ -122,15 +140,18 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
+  // Selected day from the form (chips live on whatever day you’re viewing)
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+
   const itemId = String(formData.get('catalog_item_id') ?? '');
   const mult = Number(formData.get('mult') ?? '1');
   const status = (String(formData.get('status') ?? 'planned') === 'eaten') ? 'eaten' : 'planned';
   if (!itemId) throw new Error('Missing catalog_item_id');
   if (!Number.isFinite(mult) || mult <= 0) throw new Error('Invalid multiplier');
 
-  // Ensure today exists → get day_id
-  const today = todayYMDVancouver();
-  const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: today });
+  // Ensure selected day exists → get day_id
+  const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: dayDate });
   if (dayErr) throw new Error(dayErr.message);
 
   // Load item (RLS: only your item is visible)
@@ -163,13 +184,17 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     .eq('id', entryId);
   if (linkErr) throw new Error(linkErr.message);
 
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }
 
 export async function updateEntryQtyAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
+
+  // Selected day for revalidation
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
 
   const entryId = String(formData.get('entry_id') ?? '');
   const qty = Number(formData.get('qty') ?? '0');
@@ -207,5 +232,5 @@ export async function updateEntryQtyAction(formData: FormData) {
     .eq('id', entryId);
 
   if (updErr) throw new Error(updErr.message);
-  revalidatePath('/');
+  revalidatePath(`/?d=${dayDate}`);
 }

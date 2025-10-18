@@ -2,10 +2,11 @@
 
 import { deleteEntryAction } from '@/app/actions';
 
-export default function DeleteEntryButton({ entryId }: { entryId: string }) {
+export default function DeleteEntryButton({ entryId, date }: { entryId: string; date?: string }) {
   return (
     <form>
       <input type="hidden" name="entry_id" value={entryId} />
+      {date ? <input type="hidden" name="date" value={date} /> : null}
       <button
         type="submit"
         // Client-side confirm; if canceled, prevent the POST

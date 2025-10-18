@@ -109,6 +109,7 @@ export default async function Home({
             <div className="flex flex-wrap gap-2">
               {(chipItems ?? []).map((it) => (
                 <form key={it.id} action={addEntryFromCatalogAction}>
+                  <input type="hidden" name="date" value={selectedYMD} />
                   {/* Default multiplier = 1 */}
                   <input type="hidden" name="mult" value="1" />
                   {/* NOTE: Step 2 will add a hidden `date` here so adds go to the selected day */}
@@ -143,6 +144,7 @@ export default async function Home({
               One-time
             </div>
             <form action={addEntryAction} className="flex flex-wrap gap-2 items-end">
+              <input type="hidden" name="date" value={selectedYMD} />
               {/* NOTE: Step 2 will add a hidden `date` here so adds go to the selected day */}
               <div className="flex flex-col">
                 <label className="text-xs text-gray-600">Name</label>
@@ -189,6 +191,7 @@ export default async function Home({
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                     {/* Qty edit */}
                     <form action={updateEntryQtyAction} className="flex items-center gap-1">
+                      <input type="hidden" name="date" value={selectedYMD} />
                       <input type="hidden" name="entry_id" value={e.id} />
                       <label htmlFor={`qty-${e.id}`} className="sr-only">Quantity</label>
                       <input
@@ -221,6 +224,7 @@ export default async function Home({
                             Planned
                           </span>
                           <form action={toggleEntryStatusAction}>
+                            <input type="hidden" name="date" value={selectedYMD} />
                             <input type="hidden" name="entry_id" value={e.id} />
                             <input type="hidden" name="next_status" value="eaten" />
                             <button
@@ -235,6 +239,7 @@ export default async function Home({
                       ) : (
                         <>
                           <form action={toggleEntryStatusAction}>
+                            <input type="hidden" name="date" value={selectedYMD} />
                             <input type="hidden" name="entry_id" value={e.id} />
                             <input type="hidden" name="next_status" value="planned" />
                             <button
@@ -259,12 +264,14 @@ export default async function Home({
 
                   {/* Move up / Move down */}
                   <form action={moveEntryUpAction}>
+                    <input type="hidden" name="date" value={selectedYMD} />
                     <input type="hidden" name="entry_id" value={e.id} />
                     <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move up">
                       ↑
                     </button>
                   </form>
                   <form action={moveEntryDownAction}>
+                    <input type="hidden" name="date" value={selectedYMD} />
                     <input type="hidden" name="entry_id" value={e.id} />
                     <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move down">
                       ↓
@@ -272,7 +279,7 @@ export default async function Home({
                   </form>
 
                   {/* Delete */}
-                  <DeleteEntryButton entryId={e.id} />
+                  <DeleteEntryButton entryId={e.id} date={selectedYMD} />
                 </div>
               </li>
             ))}
