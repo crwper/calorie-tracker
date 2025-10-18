@@ -84,7 +84,7 @@ export default async function Home() {
               </div>
               <div className="flex flex-col">
                 <label className="text-xs text-gray-600">kcal</label>
-                <input name="kcal_snapshot" type="number" step="1" className="border rounded px-2 py-1 text-sm" placeholder="165" />
+                <input name="kcal_snapshot" type="number" step="0.01" className="border rounded px-2 py-1 text-sm" placeholder="165" />
               </div>
               <div className="flex flex-col">
                 <label className="text-xs text-gray-600">Status</label>

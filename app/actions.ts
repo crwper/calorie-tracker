@@ -44,7 +44,7 @@ export async function addEntryAction(formData: FormData) {
   if (!name) throw new Error('Name required');
   if (!unit) throw new Error('Unit required');
   if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
-  if (!Number.isInteger(kcal) || kcal <= 0) throw new Error('kcal must be a positive integer');
+  if (!Number.isFinite(kcal) || kcal <= 0) throw new Error('kcal must be a positive number');
 
   const { error } = await supabase.from('entries').insert({
     day_id: day.id,
