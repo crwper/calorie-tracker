@@ -159,8 +159,10 @@ export default async function Home() {
               <li key={e.id} className="py-2 flex items-start justify-between">
                 <div className="flex-1">
                   <div className="font-medium">{e.name}</div>
-                  {/* Inline qty editor as part of the description */}
+
+                  {/* Inline qty editor + status toggle merged into the description */}
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    {/* Qty edit */}
                     <form action={updateEntryQtyAction} className="flex items-center gap-1">
                       <input type="hidden" name="entry_id" value={e.id} />
                       <label htmlFor={`qty-${e.id}`} className="sr-only">Quantity</label>
@@ -183,52 +185,68 @@ export default async function Home() {
                         Save
                       </button>
                     </form>
+
                     <span aria-hidden="true">•</span>
-                    <span>{e.status}</span>
+
+                    {/* Status segmented control: selected segment = current state; other segment = action */}
+                    <div className="inline-flex overflow-hidden rounded border">
+                      {e.status === 'planned' ? (
+                        <>
+                          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">
+                            Planned
+                          </span>
+                          <form action={toggleEntryStatusAction}>
+                            <input type="hidden" name="entry_id" value={e.id} />
+                            <input type="hidden" name="next_status" value="eaten" />
+                            <button
+                              type="submit"
+                              className="px-2 py-0.5 hover:bg-gray-50"
+                              title="Mark as eaten"
+                            >
+                              Eaten
+                            </button>
+                          </form>
+                        </>
+                      ) : (
+                        <>
+                          <form action={toggleEntryStatusAction}>
+                            <input type="hidden" name="entry_id" value={e.id} />
+                            <input type="hidden" name="next_status" value="planned" />
+                            <button
+                              type="submit"
+                              className="px-2 py-0.5 hover:bg-gray-50"
+                              title="Mark as planned"
+                            >
+                              Planned
+                            </button>
+                          </form>
+                          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">
+                            Eaten
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="text-sm">{Number(e.kcal_snapshot).toFixed(2)} kcal</div>
 
-                  <form action={toggleEntryStatusAction}>
-                    <input type="hidden" name="entry_id" value={e.id} />
-                    <input
-                      type="hidden"
-                      name="next_status"
-                      value={e.status === 'eaten' ? 'planned' : 'eaten'}
-                    />
-                    <button
-                      type="submit"
-                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                      title={e.status === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
-                    >
-                      {e.status === 'eaten' ? '⇤ Planned' : '✓ Eaten'}
-                    </button>
-                  </form>
-
+                  {/* Move up / Move down */}
                   <form action={moveEntryUpAction}>
                     <input type="hidden" name="entry_id" value={e.id} />
-                    <button
-                      type="submit"
-                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                      title="Move up"
-                    >
+                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move up">
                       ↑
                     </button>
                   </form>
-
                   <form action={moveEntryDownAction}>
                     <input type="hidden" name="entry_id" value={e.id} />
-                    <button
-                      type="submit"
-                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                      title="Move down"
-                    >
+                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move down">
                       ↓
                     </button>
                   </form>
 
+                  {/* Delete */}
                   <DeleteEntryButton entryId={e.id} />
                 </div>
               </li>
