@@ -3,7 +3,7 @@ import WhereServer from '@/components/WhereServer';
 import WhereClient from '@/components/WhereClient';
 import { todayYMDVancouver } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
-import { createTodayAction, addEntryAction } from './actions';
+import { createTodayAction, addEntryAction, toggleEntryStatusAction } from './actions';
 
 export default async function Home() {
   const supabase = await createClient();
@@ -31,6 +31,14 @@ export default async function Home() {
       .order('created_at', { ascending: false });
     entries = data ?? [];
   }
+
+  // Compute simple totals: for now, treat kcal_snapshot as kcal for the entered qty
+  const totalEaten = entries
+    .filter(e => e.status === 'eaten')
+    .reduce((sum, e) => sum + (e.kcal_snapshot ?? 0), 0);
+  const totalPlanned = entries
+    .filter(e => e.status === 'planned')
+    .reduce((sum, e) => sum + (e.kcal_snapshot ?? 0), 0);
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
@@ -90,6 +98,14 @@ export default async function Home() {
             </form>
           )}
 
+          {entries.length > 0 && (
+            <div className="flex items-center justify-between rounded-md bg-slate-50 p-2 text-sm">
+              <div><span className="font-medium">Planned:</span> {totalPlanned} kcal</div>
+              <div><span className="font-medium">Eaten:</span> {totalEaten} kcal</div>
+              <div><span className="font-medium">Total:</span> {totalPlanned + totalEaten} kcal</div>
+            </div>
+          )}
+
           <ul className="divide-y">
             {entries.map(e => (
               <li key={e.id} className="py-2 flex items-center justify-between">
@@ -97,7 +113,24 @@ export default async function Home() {
                   <div className="font-medium">{e.name}</div>
                   <div className="text-xs text-gray-600">{e.qty} {e.unit} • {e.status}</div>
                 </div>
-                <div className="text-sm">{e.kcal_snapshot} kcal</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm">{e.kcal_snapshot} kcal</div>
+                  <form action={toggleEntryStatusAction}>
+                    <input type="hidden" name="entry_id" value={e.id} />
+                    <input
+                      type="hidden"
+                      name="next_status"
+                      value={e.status === 'eaten' ? 'planned' : 'eaten'}
+                    />
+                    <button
+                      type="submit"
+                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
+                      title={e.status === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
+                    >
+                      {e.status === 'eaten' ? '⇤ Planned' : '✓ Eaten'}
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
             {day && entries.length === 0 && (

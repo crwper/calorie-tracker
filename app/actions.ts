@@ -58,3 +58,23 @@ export async function addEntryAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath('/');
 }
+
+export async function toggleEntryStatusAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const entryId = String(formData.get('entry_id') ?? '');
+  const nextStatus = String(formData.get('next_status') ?? 'planned');
+  if (!entryId) throw new Error('Missing entry_id');
+  if (nextStatus !== 'planned' && nextStatus !== 'eaten') throw new Error('Invalid status');
+
+  // RLS ensures you can only update entries whose day belongs to you
+  const { error } = await supabase
+    .from('entries')
+    .update({ status: nextStatus })
+    .eq('id', entryId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
+}
