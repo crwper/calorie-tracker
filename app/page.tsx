@@ -156,30 +156,41 @@ export default async function Home() {
 
           <ul className="divide-y">
             {entries.map(e => (
-              <li key={e.id} className="py-2 flex items-center justify-between">
-                <div>
+              <li key={e.id} className="py-2 flex items-start justify-between">
+                <div className="flex-1">
                   <div className="font-medium">{e.name}</div>
-                  <div className="text-xs text-gray-600">{e.qty} {e.unit} • {e.status}</div>
+                  {/* Inline qty editor as part of the description */}
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <form action={updateEntryQtyAction} className="flex items-center gap-1">
+                      <input type="hidden" name="entry_id" value={e.id} />
+                      <label htmlFor={`qty-${e.id}`} className="sr-only">Quantity</label>
+                      <input
+                        id={`qty-${e.id}`}
+                        name="qty"
+                        type="number"
+                        step="any"
+                        min="0"
+                        inputMode="decimal"
+                        defaultValue={String(e.qty)}
+                        className="w-20 border rounded px-2 py-1 text-xs"
+                      />
+                      <span>{e.unit}</span>
+                      <button
+                        type="submit"
+                        className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
+                        title="Save quantity"
+                      >
+                        Save
+                      </button>
+                    </form>
+                    <span aria-hidden="true">•</span>
+                    <span>{e.status}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {/* kcal display */}
-                  <div className="text-sm">{e.kcal_snapshot} kcal</div>
 
-                  {/* Quick qty edit: narrow input + Save; submits to server action */}
-                  <form action={updateEntryQtyAction} className="flex items-center gap-1">
-                    <input type="hidden" name="entry_id" value={e.id} />
-                    <label className="text-xs text-gray-600">Qty</label>
-                    <input
-                      name="qty"
-                      type="number"
-                      step="any"
-                      min="0"
-                      inputMode="decimal"
-                      defaultValue={String(e.qty)}
-                      className="w-20 border rounded px-2 py-1 text-xs"
-                    />
-                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50">Save</button>
-                  </form>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm">{Number(e.kcal_snapshot).toFixed(2)} kcal</div>
+
                   <form action={toggleEntryStatusAction}>
                     <input type="hidden" name="entry_id" value={e.id} />
                     <input
@@ -195,17 +206,29 @@ export default async function Home() {
                       {e.status === 'eaten' ? '⇤ Planned' : '✓ Eaten'}
                     </button>
                   </form>
-                  {/* Move Up */}
+
                   <form action={moveEntryUpAction}>
                     <input type="hidden" name="entry_id" value={e.id} />
-                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move up">↑</button>
+                    <button
+                      type="submit"
+                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
+                      title="Move up"
+                    >
+                      ↑
+                    </button>
                   </form>
-                  {/* Move Down */}
+
                   <form action={moveEntryDownAction}>
                     <input type="hidden" name="entry_id" value={e.id} />
-                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move down">↓</button>
+                    <button
+                      type="submit"
+                      className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
+                      title="Move down"
+                    >
+                      ↓
+                    </button>
                   </form>
-                  {/* Delete (client wrapper for confirm) */}
+
                   <DeleteEntryButton entryId={e.id} />
                 </div>
               </li>
