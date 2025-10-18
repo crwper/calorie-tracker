@@ -5,20 +5,6 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { todayYMDVancouver, isValidYMD } from '@/lib/dates';
 
-export async function createTodayAction() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Must be signed in');
-
-  const today = todayYMDVancouver();
-
-  // Atomic get-or-create via RPC (returns the day id)
-  const { error } = await supabase.rpc('get_or_create_day', { p_date: today });
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/');
-}
-
 export async function addEntryAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
