@@ -90,32 +90,26 @@ export default async function Home() {
             </button>
           </form>
 
-          {/* Favorite/Recent chips with one-click add (×0.5 / ×1 / ×2) */}
+          {/* Favorite/Recent chips — whole chip is a submit button (one click to add) */}
           <div className="flex flex-wrap gap-2">
             {(chipItems ?? []).map((it) => (
-              <div key={it.id} className="border rounded px-2 py-1 text-xs bg-slate-50">
-                <div className="font-medium">{it.name}</div>
-                <div className="text-[11px] text-gray-600">
-                  {it.default_qty} {it.unit} • {Number(it.kcal_per_unit).toFixed(2)} kcal/{it.unit}
-                </div>
-                <div className="mt-1 flex gap-1">
-                  <form action={addEntryFromCatalogAction}>
-                    <input type="hidden" name="catalog_item_id" value={it.id} />
-                    <input type="hidden" name="mult" value="0.5" />
-                    <button className="rounded border px-2 py-0.5 hover:bg-gray-50">×0.5</button>
-                  </form>
-                  <form action={addEntryFromCatalogAction}>
-                    <input type="hidden" name="catalog_item_id" value={it.id} />
-                    <input type="hidden" name="mult" value="1" />
-                    <button className="rounded border px-2 py-0.5 hover:bg-gray-50">Add</button>
-                  </form>
-                  <form action={addEntryFromCatalogAction}>
-                    <input type="hidden" name="catalog_item_id" value={it.id} />
-                    <input type="hidden" name="mult" value="2" />
-                    <button className="rounded border px-2 py-0.5 hover:bg-gray-50">×2</button>
-                  </form>
-                </div>
-              </div>
+              <form key={it.id} action={addEntryFromCatalogAction}>
+                {/* Default multiplier = 1 */}
+                <input type="hidden" name="mult" value="1" />
+                {/* Use the button's name/value as form data to avoid extra hidden input */}
+                <button
+                  type="submit"
+                  name="catalog_item_id"
+                  value={it.id}
+                  className="border rounded px-2 py-1 text-left text-xs bg-slate-50 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  aria-label={`Add ${it.name}`}
+                >
+                  <div className="font-medium">{it.name}</div>
+                  <div className="text-[11px] text-gray-600">
+                    {it.default_qty} {it.unit} • {Number(it.kcal_per_unit).toFixed(2)} kcal/{it.unit}
+                  </div>
+                </button>
+              </form>
             ))}
             {(chipItems ?? []).length === 0 && (
               <div className="text-sm text-gray-600">No catalog items yet.</div>
