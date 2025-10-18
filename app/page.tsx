@@ -3,7 +3,7 @@ import WhereServer from '@/components/WhereServer';
 import WhereClient from '@/components/WhereClient';
 import { todayYMDVancouver } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
-import { createTodayAction, addEntryAction, toggleEntryStatusAction } from './actions';
+import { createTodayAction, addEntryAction, toggleEntryStatusAction, moveEntryUpAction, moveEntryDownAction } from './actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 
 export default async function Home() {
@@ -29,7 +29,7 @@ export default async function Home() {
       .from('entries')
       .select('id, name, qty, unit, kcal_snapshot, status, created_at')
       .eq('day_id', day.id)
-      .order('created_at', { ascending: false });
+      .order('ordering', { ascending: true });   // show oldest→newest (bottom appends)
     entries = data ?? [];
   }
 
@@ -131,7 +131,17 @@ export default async function Home() {
                       {e.status === 'eaten' ? '⇤ Planned' : '✓ Eaten'}
                     </button>
                   </form>
-                  {/* Client component handles confirm; server action is bound via formAction */}
+                  {/* Move Up */}
+                  <form action={moveEntryUpAction}>
+                    <input type="hidden" name="entry_id" value={e.id} />
+                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move up">↑</button>
+                  </form>
+                  {/* Move Down */}
+                  <form action={moveEntryDownAction}>
+                    <input type="hidden" name="entry_id" value={e.id} />
+                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move down">↓</button>
+                  </form>
+                  {/* Delete (client wrapper for confirm) */}
                   <DeleteEntryButton entryId={e.id} />
                 </div>
               </li>

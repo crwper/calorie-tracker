@@ -46,13 +46,14 @@ export async function addEntryAction(formData: FormData) {
   if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
   if (!Number.isFinite(kcal) || kcal <= 0) throw new Error('kcal must be a positive number');
 
-  const { error } = await supabase.from('entries').insert({
-    day_id: day.id,
-    name,
-    qty,
-    unit,
-    kcal_snapshot: kcal,
-    status,
+  // Atomic append at bottom via RPC (RLS-safe, ownership-checked)
+  const { error } = await supabase.rpc('add_entry_with_order', {
+    p_day_id: day.id,
+    p_name: name,
+    p_qty: qty,
+    p_unit: unit,
+    p_kcal: kcal,
+    p_status: status,
   });
 
   if (error) throw new Error(error.message);
@@ -91,5 +92,31 @@ export async function deleteEntryAction(formData: FormData) {
   const { error } = await supabase.from('entries').delete().eq('id', entryId);
   if (error) throw new Error(error.message);
 
+  revalidatePath('/');
+}
+
+export async function moveEntryUpAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const entryId = String(formData.get('entry_id') ?? '');
+  if (!entryId) throw new Error('Missing entry_id');
+
+  const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'up' });
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
+}
+
+export async function moveEntryDownAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const entryId = String(formData.get('entry_id') ?? '');
+  if (!entryId) throw new Error('Missing entry_id');
+
+  const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'down' });
+  if (error) throw new Error(error.message);
   revalidatePath('/');
 }
