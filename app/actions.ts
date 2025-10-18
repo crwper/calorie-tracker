@@ -12,13 +12,8 @@ export async function createTodayAction() {
 
   const today = todayYMDVancouver();
 
-  // Idempotent create: insert-or-update on unique(date).
-  // Using upsert avoids race/duplicate issues and returns the row.
-  const { error } = await supabase
-    .from('days')
-    .upsert({ user_id: user.id, date: today }, { onConflict: 'user_id,date' })
-    .select('id')
-    .single();
+  // Atomic get-or-create via RPC (returns the day id)
+  const { error } = await supabase.rpc('get_or_create_day', { p_date: today });
 
   if (error) throw new Error(error.message);
   revalidatePath('/');
