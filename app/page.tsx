@@ -7,7 +7,7 @@ import {
   createTodayAction, addEntryAction,
   toggleEntryStatusAction, deleteEntryAction,
   moveEntryUpAction, moveEntryDownAction,
-  addEntryFromCatalogAction, quickAddCatalogAction
+  addEntryFromCatalogAction
 } from './actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 
@@ -46,14 +46,6 @@ export default async function Home() {
     .order('created_at', { ascending: false })
     .limit(6);
 
-  // Fetch a larger set of names for datalist suggestions
-  const { data: allNames } = await supabase
-    .from('catalog_items')
-    .select('name')
-   .order('is_favorite', { ascending: false })
-    .order('name', { ascending: true })
-    .limit(50);
-
   // Compute simple totals: for now, treat kcal_snapshot as kcal for the entered qty
   const totalEaten = entries
     .filter(e => e.status === 'eaten')
@@ -69,27 +61,6 @@ export default async function Home() {
       <section className="space-y-2">
         <h2 className="font-semibold">Catalog</h2>
         <div className="rounded-lg border bg-white p-4 space-y-3">
-          {/* Quick-add: "130 kibble" + Enter */}
-          <form action={quickAddCatalogAction} className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-gray-600">Quick add</label>
-              <input
-                name="q"
-                list="catalog-list"
-                className="w-full border rounded px-2 py-1 text-sm"
-                placeholder='e.g., "130 kibble" or "kibble"'
-              />
-              <datalist id="catalog-list">
-                {(allNames ?? []).map((n) => (
-                  <option key={n.name} value={n.name} />
-                ))}
-              </datalist>
-            </div>
-            <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">
-              Add
-            </button>
-          </form>
-
           {/* Favorite/Recent chips — whole chip is a submit button (one click to add) */}
           <div className="flex flex-wrap gap-2">
             {(chipItems ?? []).map((it) => (
