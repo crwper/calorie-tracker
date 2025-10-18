@@ -78,3 +78,18 @@ export async function toggleEntryStatusAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath('/');
 }
+
+export async function deleteEntryAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const entryId = String(formData.get('entry_id') ?? '');
+  if (!entryId) throw new Error('Missing entry_id');
+
+  // RLS ensures you can delete only entries whose parent day belongs to you
+  const { error } = await supabase.from('entries').delete().eq('id', entryId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/');
+}

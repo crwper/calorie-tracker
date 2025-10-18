@@ -4,6 +4,7 @@ import WhereClient from '@/components/WhereClient';
 import { todayYMDVancouver } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
 import { createTodayAction, addEntryAction, toggleEntryStatusAction } from './actions';
+import DeleteEntryButton from '@/components/DeleteEntryButton';
 
 export default async function Home() {
   const supabase = await createClient();
@@ -130,6 +131,8 @@ export default async function Home() {
                       {e.status === 'eaten' ? '⇤ Planned' : '✓ Eaten'}
                     </button>
                   </form>
+                  {/* Client component handles confirm; server action is bound via formAction */}
+                  <DeleteEntryButton entryId={e.id} />
                 </div>
               </li>
             ))}
