@@ -1,27 +1,57 @@
 // app/page.tsx
-import WhereServer from '@/components/WhereServer';
-import WhereClient from '@/components/WhereClient';
-import { todayYMDVancouver, formatYMDLongInTZ } from '@/lib/dates';
+import { cookies } from 'next/headers';
+import {
+  todayYMDVancouver,            // kept for backwards-compat elsewhere if you need it
+  formatYMDLongInTZ,            // not used here, but left exported in case
+  // NEW literal-date helpers:
+  todayInTZYMD,
+  isValidYMD,
+  addDaysYMD,
+  formatYMDLong,                // timezone-invariant long label for a YYYY-MM-DD
+} from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
 import {
-  createTodayAction, addEntryAction,
-  toggleEntryStatusAction, deleteEntryAction,
-  moveEntryUpAction, moveEntryDownAction,
-  addEntryFromCatalogAction, updateEntryQtyAction 
+  addEntryAction,
+  toggleEntryStatusAction,
+  moveEntryUpAction,
+  moveEntryDownAction,
+  addEntryFromCatalogAction,
+  updateEntryQtyAction
 } from './actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
+import { redirect } from 'next/navigation';
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const today = todayYMDVancouver();
-  const friendly = formatYMDLongInTZ(today);
 
-  // Fetch today's day + entries (read-only; GET has no side effects)
+  // Resolve URL param ?d=YYYY-MM-DD (literal date). If missing/invalid, default using tz cookie (or Vancouver).
+  const sp = await searchParams;
+  const dParam = Array.isArray(sp?.d) ? sp.d[0] : sp?.d;
+  const cookieStore = await cookies();
+  const tz = cookieStore.get('tz')?.value ?? 'America/Vancouver';
+
+  // Canonicalize: if missing/invalid, redirect to /?d=<today>
+  if (!dParam || !isValidYMD(dParam)) {
+    const todayYMD = todayInTZYMD(tz);
+    redirect(`/?d=${todayYMD}`);
+  }
+  const selectedYMD = dParam!;
+  const friendly = formatYMDLong(selectedYMD);
+
+  // Nav dates (pure date math on literal YYYY-MM-DD)
+  const prevYMD = addDaysYMD(selectedYMD, -1);
+  const nextYMD = addDaysYMD(selectedYMD, +1);
+  const todayYMD = todayInTZYMD(tz);
+
+  // Fetch this day's "day" + entries (read-only; GET has no side effects)
   const { data: day } = await supabase
     .from('days')
     .select('id, date')
-    .eq('date', today)
+    .eq('date', selectedYMD)
     .maybeSingle();
 
   let entries: Array<{
@@ -47,7 +77,7 @@ export default async function Home() {
     .order('created_at', { ascending: false })
     .limit(6);
 
-  // Compute simple totals: for now, treat kcal_snapshot as kcal for the entered qty
+  // Totals for the visible day
   const totalEaten = entries
     .filter(e => e.status === 'eaten')
     .reduce((sum, e) => sum + (e.kcal_snapshot ?? 0), 0);
@@ -57,7 +87,15 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
-      <h1 className="text-2xl font-bold">{friendly}</h1>
+      {/* Header + date nav */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{friendly}</h1>
+        <nav className="flex items-center gap-2 text-sm">
+          <a href={`/?d=${prevYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Previous day">← Prev</a>
+          <a href={`/?d=${todayYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Jump to today">Today</a>
+          <a href={`/?d=${nextYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Next day">Next →</a>
+        </nav>
+      </div>
 
       {/* Unified "Add to today" section with labeled subsections */}
       <section className="space-y-2">
@@ -73,7 +111,7 @@ export default async function Home() {
                 <form key={it.id} action={addEntryFromCatalogAction}>
                   {/* Default multiplier = 1 */}
                   <input type="hidden" name="mult" value="1" />
-                  {/* Use the button's name/value as form data to avoid extra hidden input */}
+                  {/* NOTE: Step 2 will add a hidden `date` here so adds go to the selected day */}
                   <button
                     type="submit"
                     name="catalog_item_id"
@@ -92,13 +130,11 @@ export default async function Home() {
                 <div className="text-sm text-gray-600">No catalog items yet.</div>
               )}
             </div>
-            {/* Manage link directly under chips */}
             <div className="mt-2 text-sm text-gray-600">
               <a href="/catalog" className="underline">Manage catalog →</a>
             </div>
           </div>
 
-          {/* Visual separator between methods */}
           <div className="border-t my-2" />
 
           {/* One-time subsection (manual add) */}
@@ -107,6 +143,7 @@ export default async function Home() {
               One-time
             </div>
             <form action={addEntryAction} className="flex flex-wrap gap-2 items-end">
+              {/* NOTE: Step 2 will add a hidden `date` here so adds go to the selected day */}
               <div className="flex flex-col">
                 <label className="text-xs text-gray-600">Name</label>
                 <input name="name" className="border rounded px-2 py-1 text-sm" placeholder="Chicken" />
@@ -138,31 +175,10 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Keep Day section for now (to be removed in the next step) */}
-      <section className="space-y-2">
-        <h2 className="font-semibold">Day</h2>
-        <div className="rounded-lg border bg-white p-4">
-          {day ? (
-            <div>Day exists for {today}.</div>
-          ) : (
-            <form action={createTodayAction}>
-              <button
-                className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50"
-                type="submit"
-              >
-                Create today
-              </button>
-            </form>
-          )}
-        </div>
-      </section>
-
-      {/* Entries with totals at the bottom */}
+      {/* Entries with totals at the bottom (no "Create day" gating) */}
       <section className="space-y-2">
         <h2 className="font-semibold">Entries</h2>
         <div className="rounded-lg border bg-white p-4 space-y-3">
-          {!day && <div className="text-sm text-gray-600">Create today first.</div>}
-
           <ul className="divide-y">
             {entries.map(e => (
               <li key={e.id} className="py-2 flex items-start justify-between">
@@ -260,12 +276,12 @@ export default async function Home() {
                 </div>
               </li>
             ))}
-            {day && entries.length === 0 && (
+            {entries.length === 0 && (
               <li className="py-2 text-sm text-gray-600">No entries yet.</li>
             )}
           </ul>
 
-          {/* Totals moved to the bottom */}
+          {/* Totals at the bottom */}
           {entries.length > 0 && (
             <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
               <div><span className="font-medium">Planned:</span> {totalPlanned} kcal</div>
