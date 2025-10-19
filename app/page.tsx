@@ -66,7 +66,11 @@ export default async function Home({
       .select('id, name, qty, unit, kcal_snapshot, status, created_at')
       .eq('day_id', day.id)
       .order('ordering', { ascending: true });   // show oldest→newest (bottom appends)
-    entries = data ?? [];
+    // Coerce Supabase numeric -> JS number once to avoid string math bugs
+    entries = (data ?? []).map(e => ({
+      ...e,
+      kcal_snapshot: Number(e.kcal_snapshot ?? 0),
+    }));
   }
 
   // Fetch a small set for chips (favorites first, then newest)
@@ -80,10 +84,10 @@ export default async function Home({
   // Totals for the visible day
   const totalEaten = entries
     .filter(e => e.status === 'eaten')
-    .reduce((sum, e) => sum + (e.kcal_snapshot ?? 0), 0);
+    .reduce((sum, e) => sum + e.kcal_snapshot, 0);
   const totalPlanned = entries
     .filter(e => e.status === 'planned')
-    .reduce((sum, e) => sum + (e.kcal_snapshot ?? 0), 0);
+    .reduce((sum, e) => sum + e.kcal_snapshot, 0);
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
@@ -291,9 +295,9 @@ export default async function Home({
           {/* Totals at the bottom */}
           {entries.length > 0 && (
             <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
-              <div><span className="font-medium">Planned:</span> {totalPlanned} kcal</div>
-              <div><span className="font-medium">Eaten:</span> {totalEaten} kcal</div>
-              <div><span className="font-medium">Total:</span> {totalPlanned + totalEaten} kcal</div>
+              <div><span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal</div>
+              <div><span className="font-medium">Eaten:</span> {totalEaten.toFixed(2)} kcal</div>
+              <div><span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(2)} kcal</div>
             </div>
           )}
         </div>
