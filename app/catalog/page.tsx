@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import {
   createCatalogItemAction,
@@ -10,6 +11,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function CatalogPage() {
   const supabase = await createClient();
+
+  // Auth gate: anonymous → /login?next=/catalog
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+     redirect('/login?next=/catalog');
+  }
+
   const { data: items } = await supabase
     .from('catalog_items')
     .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')

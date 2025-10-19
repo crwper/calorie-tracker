@@ -42,6 +42,12 @@ export default async function Home({
   const selectedYMD = dParam!;
   const friendly = formatYMDLong(selectedYMD);
 
+  // Auth gate: anonymous → /login?next=the current day
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent(`/?d=${selectedYMD}`)}`);
+  }
+
   // Nav dates (pure date math on literal YYYY-MM-DD)
   const prevYMD = addDaysYMD(selectedYMD, -1);
   const nextYMD = addDaysYMD(selectedYMD, +1);

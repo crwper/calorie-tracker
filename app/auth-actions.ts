@@ -23,11 +23,14 @@ export async function loginAction(formData: FormData) {
   const supabase = await createClient();
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
+  const nextRaw = String(formData.get('next') ?? '/');
+  // Safety: only allow relative paths
+  const next = nextRaw.startsWith('/') ? nextRaw : '/';
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
 
-  redirect('/');
+  redirect(next);
 }
 
 export async function logoutAction() {

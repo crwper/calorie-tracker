@@ -8,6 +8,7 @@ export default async function LoginPage({
   const sp = await searchParams;
   const checkEmail = !!sp['check-email'];
   const err = typeof sp.error === 'string' ? sp.error : null;
+  const next = typeof sp.next === 'string' ? sp.next : '/';
 
   return (
     <main className="mx-auto max-w-sm p-6 space-y-4">
@@ -15,6 +16,7 @@ export default async function LoginPage({
       {checkEmail && <p className="text-sm text-green-700">Check your email to confirm your account, then log in.</p>}
       {err && <p className="text-sm text-red-600">Error: {err}</p>}
       <form action={loginAction} className="space-y-3">
+        <input type="hidden" name="next" value={next} />
         <div className="flex flex-col">
           <label className="text-xs text-gray-600">Email</label>
           <input name="email" type="email" required className="border rounded px-2 py-1" />
