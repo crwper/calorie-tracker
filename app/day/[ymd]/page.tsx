@@ -181,7 +181,14 @@ export default async function DayPage({ params }: { params: { ymd: string } }) {
         <div className="rounded-lg border bg-white p-4 space-y-3">
           <ul className="divide-y">
             {entries.map(e => (
-              <li key={e.id} className="py-2 flex items-start justify-between">
+                <li
+                  key={e.id}
+                  className={`py-2 flex items-start justify-between rounded-md ${
+                    e.status === 'planned'
+                      ? 'bg-amber-50 border-l-4 border-amber-400'
+                      : ''
+                  }`}
+                >
                 <div className="flex-1">
                   <div className="font-medium">{e.name}</div>
 
