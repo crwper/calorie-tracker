@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { loginAction } from '../auth-actions';
 
 export default async function LoginPage({
@@ -28,7 +29,7 @@ export default async function LoginPage({
         <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">Log in</button>
       </form>
       <p className="text-sm text-gray-600">
-        No account? <a className="underline" href="/signup">Sign up</a>
+        No account? <Link className="underline" href="/signup">Sign up</Link>
       </p>
     </main>
   );

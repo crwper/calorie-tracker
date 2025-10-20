@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from 'next/link';
 import "./globals.css";
 import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from './auth-actions';
@@ -27,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="border-b bg-white">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
-            <a href="/" className="font-semibold">Dog Tracker</a>
+            <Link href="/" className="font-semibold">Dog Tracker</Link>
             <div className="text-sm">
               {user ? (
                 <form action={logoutAction} className="flex items-center gap-3">
@@ -36,8 +37,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </form>
               ) : (
                 <div className="flex items-center gap-3">
-                  <a className="underline" href="/login">Login</a>
-                  <a className="underline" href="/signup">Sign up</a>
+                  <Link className="underline" href="/login">Login</Link>
+                  <Link className="underline" href="/signup">Sign up</Link>
                 </div>
               )}
             </div>

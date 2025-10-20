@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { signupAction } from '../auth-actions';
 
 export default async function SignupPage({
@@ -23,7 +24,7 @@ export default async function SignupPage({
         <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">Sign up</button>
       </form>
       <p className="text-sm text-gray-600">
-        Already have an account? <a className="underline" href="/login">Log in</a>
+        Already have an account? <Link className="underline" href="/login">Log in</Link>
       </p>
     </main>
   );

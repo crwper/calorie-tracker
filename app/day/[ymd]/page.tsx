@@ -1,6 +1,7 @@
 // app/day/[ymd]/page.tsx
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
   todayInTZYMD,
@@ -90,9 +91,9 @@ export default async function DayPage({ params }: { params: { ymd: string } }) {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{friendly}</h1>
         <nav className="flex items-center gap-2 text-sm">
-          <a href={`/day/${prevYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Previous day">← Prev</a>
-          <a href={`/day/${todayYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Jump to today">Today</a>
-          <a href={`/day/${nextYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Next day">Next →</a>
+          <Link href={`/day/${prevYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Previous day">← Prev</Link>
+          <Link href={`/day/${todayYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Jump to today">Today</Link>
+          <Link href={`/day/${nextYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Next day">Next →</Link>
         </nav>
       </div>
 
@@ -130,7 +131,7 @@ export default async function DayPage({ params }: { params: { ymd: string } }) {
               )}
             </div>
             <div className="mt-2 text-sm text-gray-600">
-              <a href="/catalog" className="underline">Manage catalog →</a>
+              <Link href="/catalog" className="underline">Manage catalog →</Link>
             </div>
           </div>
 
