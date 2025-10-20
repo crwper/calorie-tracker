@@ -19,14 +19,16 @@ import {
 } from '@/app/actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 
-export default async function DayPage({ params }: { params: { ymd: string } }) {
+export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
+  const { ymd } = await params;
+
   const supabase = await createClient();
 
   // Resolve the literal date from the path. If invalid, default using tz cookie (or Vancouver).
   const cookieStore = await cookies();
   const tz = cookieStore.get('tz')?.value ?? 'America/Vancouver';
-  const selectedYMD = isValidYMD(params.ymd) ? params.ymd : todayInTZYMD(tz);
-  if (!isValidYMD(params.ymd)) {
+  const selectedYMD = isValidYMD(ymd) ? ymd : todayInTZYMD(tz);
+  if (!isValidYMD(ymd)) {
     redirect(`/day/${selectedYMD}`);
   }
 
