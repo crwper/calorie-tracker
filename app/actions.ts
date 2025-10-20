@@ -41,7 +41,7 @@ export async function addEntryAction(formData: FormData) {
   });
   if (insErr) throw new Error(insErr.message);
 
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function toggleEntryStatusAction(formData: FormData) {
@@ -65,7 +65,7 @@ export async function toggleEntryStatusAction(formData: FormData) {
     .eq('id', entryId);
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function deleteEntryAction(formData: FormData) {
@@ -84,7 +84,7 @@ export async function deleteEntryAction(formData: FormData) {
   const { error } = await supabase.from('entries').delete().eq('id', entryId);
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function moveEntryUpAction(formData: FormData) {
@@ -101,7 +101,7 @@ export async function moveEntryUpAction(formData: FormData) {
 
   const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'up' });
   if (error) throw new Error(error.message);
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function moveEntryDownAction(formData: FormData) {
@@ -118,7 +118,7 @@ export async function moveEntryDownAction(formData: FormData) {
 
   const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'down' });
   if (error) throw new Error(error.message);
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function addEntryFromCatalogAction(formData: FormData) {
@@ -170,7 +170,7 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     .eq('id', entryId);
   if (linkErr) throw new Error(linkErr.message);
 
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function updateEntryQtyAction(formData: FormData) {
@@ -218,5 +218,5 @@ export async function updateEntryQtyAction(formData: FormData) {
     .eq('id', entryId);
 
   if (updErr) throw new Error(updErr.message);
-  revalidatePath(`/?d=${dayDate}`);
+  revalidatePath(`/day/${dayDate}`);
 }
