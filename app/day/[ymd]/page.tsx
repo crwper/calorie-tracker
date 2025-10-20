@@ -77,7 +77,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')
     .order('is_favorite', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(6);
+    .limit(10);
 
   // Totals for the visible day
   const totalEaten = entries
