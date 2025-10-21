@@ -269,7 +269,7 @@ ALTER TABLE ONLY "public"."entries"
 
 
 
-CREATE UNIQUE INDEX "catalog_items_user_name_key" ON "public"."catalog_items" USING "btree" ("user_id", "lower"("name"));
+CREATE UNIQUE INDEX "catalog_items_user_name_unit_key" ON "public"."catalog_items" USING "btree" ("user_id", "lower"("btrim"("name")), "lower"("btrim"("unit")));
 
 
 
