@@ -24,6 +24,7 @@ export const viewport: Viewport = {
 
 export const metadata = {
   title: 'Dog Tracker',
+  manifest: "/manifest.webmanifest",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
