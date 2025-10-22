@@ -220,3 +220,33 @@ export async function updateEntryQtyAction(formData: FormData) {
   if (updErr) throw new Error(updErr.message);
   revalidatePath(`/day/${dayDate}`);
 }
+
+export async function reorderEntriesAction(input: { date: string; ids: string[] }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const dayDate = isValidYMD(input.date) ? input.date : todayYMDVancouver();
+
+  // Get existing day id (don’t silently create a new day if not there)
+  const { data: day } = await supabase
+    .from('days')
+    .select('id')
+    .eq('date', dayDate)
+    .maybeSingle();
+
+  if (!day) {
+    // nothing to reorder (or stale client); just revalidate
+    revalidatePath(`/day/${dayDate}`);
+    return;
+  }
+
+  const { error } = await supabase.rpc('reorder_entries', {
+    p_day_id: day.id,
+    p_ids: input.ids,
+  });
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/day/${dayDate}`);
+}

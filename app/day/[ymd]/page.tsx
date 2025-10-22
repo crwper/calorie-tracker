@@ -12,12 +12,11 @@ import {
 import {
   addEntryAction,
   toggleEntryStatusAction,
-  moveEntryUpAction,
-  moveEntryDownAction,
   addEntryFromCatalogAction,
   updateEntryQtyAction,
 } from '@/app/actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
+import EntriesList from '@/components/EntriesList';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
@@ -79,7 +78,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     .order('created_at', { ascending: false })
     .limit(10);
 
-  // Totals for the visible day
+  // Totals for the visible day (derived from the current server fetch)
   const totalEaten = entries
     .filter(e => e.status === 'eaten')
     .reduce((sum, e) => sum + e.kcal_snapshot, 0);
@@ -181,121 +180,10 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       <section className="space-y-2">
         <h2 className="font-semibold">Entries</h2>
         <div className="rounded-lg border bg-white p-4 space-y-3">
-          <ul className="divide-y">
-            {entries.map(e => (
-                <li
-                  key={e.id}
-                  className={`py-2 flex items-start justify-between rounded-md ${
-                    e.status === 'planned'
-                      ? 'bg-amber-50 border-l-4 border-amber-400'
-                      : ''
-                  }`}
-                >
-                <div className="flex-1">
-                  <div className="font-medium">{e.name}</div>
+          {/* Drag-and-drop list with optimistic updates */}
+          <EntriesList entries={entries} selectedYMD={selectedYMD} />
 
-                  {/* Inline qty editor + status toggle merged into the description */}
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                    {/* Qty edit */}
-                    <form action={updateEntryQtyAction} className="flex items-center gap-1">
-                      <input type="hidden" name="date" value={selectedYMD} />
-                      <input type="hidden" name="entry_id" value={e.id} />
-                      <label htmlFor={`qty-${e.id}`} className="sr-only">Quantity</label>
-                      <input
-                        id={`qty-${e.id}`}
-                        name="qty"
-                        type="number"
-                        step="any"
-                        min="0"
-                        inputMode="decimal"
-                        defaultValue={String(e.qty)}
-                        className="w-20 border rounded px-2 py-1 text-xs"
-                      />
-                      <span>{e.unit}</span>
-                      <button
-                        type="submit"
-                        className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                        title="Save quantity"
-                      >
-                        Save
-                      </button>
-                    </form>
-
-                    <span aria-hidden="true">•</span>
-
-                    {/* Status segmented control: selected segment = current state; other segment = action */}
-                    <div className="inline-flex overflow-hidden rounded border">
-                      {e.status === 'planned' ? (
-                        <>
-                          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">
-                            Planned
-                          </span>
-                          <form action={toggleEntryStatusAction}>
-                            <input type="hidden" name="date" value={selectedYMD} />
-                            <input type="hidden" name="entry_id" value={e.id} />
-                            <input type="hidden" name="next_status" value="eaten" />
-                            <button
-                              type="submit"
-                              className="px-2 py-0.5 hover:bg-gray-50"
-                              title="Mark as eaten"
-                            >
-                              Eaten
-                            </button>
-                          </form>
-                        </>
-                      ) : (
-                        <>
-                          <form action={toggleEntryStatusAction}>
-                            <input type="hidden" name="date" value={selectedYMD} />
-                            <input type="hidden" name="entry_id" value={e.id} />
-                            <input type="hidden" name="next_status" value="planned" />
-                            <button
-                              type="submit"
-                              className="px-2 py-0.5 hover:bg-gray-50"
-                              title="Mark as planned"
-                            >
-                              Planned
-                            </button>
-                          </form>
-                          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">
-                            Eaten
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="text-sm">{Number(e.kcal_snapshot).toFixed(2)} kcal</div>
-
-                  {/* Move up / Move down */}
-                  <form action={moveEntryUpAction}>
-                    <input type="hidden" name="date" value={selectedYMD} />
-                    <input type="hidden" name="entry_id" value={e.id} />
-                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move up">
-                      ↑
-                    </button>
-                  </form>
-                  <form action={moveEntryDownAction}>
-                    <input type="hidden" name="date" value={selectedYMD} />
-                    <input type="hidden" name="entry_id" value={e.id} />
-                    <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50" title="Move down">
-                      ↓
-                    </button>
-                  </form>
-
-                  {/* Delete */}
-                  <DeleteEntryButton entryId={e.id} date={selectedYMD} />
-                </div>
-              </li>
-            ))}
-            {entries.length === 0 && (
-              <li className="py-2 text-sm text-gray-600">No entries yet.</li>
-            )}
-          </ul>
-
-          {/* Totals at the bottom */}
+          {/* Totals at the bottom (server-derived) */}
           {entries.length > 0 && (
             <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
               <div><span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal</div>
