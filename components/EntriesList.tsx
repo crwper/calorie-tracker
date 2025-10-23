@@ -222,23 +222,23 @@ function SortableEntry({
     <li
       ref={setNodeRef}
       style={style}
-      className={`p-2 flex gap-2 rounded-md ${
+      className={`p-2 flex items-stretch gap-2 rounded-md ${
         e.status === 'planned' ? 'bg-amber-50 border-l-4 border-amber-400' : ''
       }`}
     >
-      {/* Drag handle */}
-      <div className="shrink-0 pt-1">
+      {/* Drag handle: full-height left edge, icon only */}
+      <div className="shrink-0 self-stretch">
         <button
           type="button"
           aria-label="Drag to reorder"
           role="button"
-          className="rounded border px-2 py-1 text-xs cursor-grab active:cursor-grabbing select-none bg-white disabled:opacity-60 flex items-center justify-center touch-none"
+          className="h-full w-4 md:w-[18px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none bg-transparent disabled:opacity-60 outline-none focus:outline-none"
           {...(mounted ? attributes : {})}
           {...(mounted ? listeners : {})}
           suppressHydrationWarning
           disabled={disabled}
         >
-          ≡
+          <span aria-hidden="true" className="text-gray-400">≡</span>
         </button>
       </div>
 
