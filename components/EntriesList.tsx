@@ -1,7 +1,14 @@
 // components/EntriesList.tsx
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DndContext,
@@ -218,6 +225,9 @@ function SortableEntry({
   const [togglePending, setTogglePending] = useState(false);
   const showSaving = useStickyBoolean(qtyPending || togglePending, 250);
 
+  // Expose an imperative "commitNow" on qty form so we can flush before toggle->eaten
+  const qtyRef = useRef<AutoSaveQtyFormHandle | null>(null);
+
   return (
     <li
       ref={setNodeRef}
@@ -226,7 +236,7 @@ function SortableEntry({
         e.status === 'planned' ? 'bg-amber-50 border-l-4 border-amber-400' : ''
       }`}
     >
-      {/* Drag handle: full-height left edge, icon only */}
+      {/* Drag handle: full-height left edge, icon only; half width */}
       <div className="shrink-0 self-stretch">
         <button
           type="button"
@@ -242,7 +252,7 @@ function SortableEntry({
         </button>
       </div>
 
-      {/* Content grid: TL name, TR kcal+delete, BL qty+toggle, BR saving… */}
+      {/* Content grid: TL name, TR kcal+delete, BL qty/toggle, BR saving… */}
       <div className="flex-1">
         <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
           {/* Top-left: description */}
@@ -259,15 +269,23 @@ function SortableEntry({
           {/* Bottom row container (relative for bottom-right indicator) */}
           <div className="col-span-2 relative mt-1">
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 pr-16">
-              {/* Bottom-left: Qty editor — native spinners, auto-save */}
-              <AutoSaveQtyForm
-                entryId={e.id}
-                unit={e.unit}
-                initialQty={e.qty}
-                selectedYMD={selectedYMD}
-                onQtyOptimistic={(q) => onQtyOptimistic(e.id, q)}
-                onPendingChange={setQtyPending}
-              />
+              {/* Bottom-left: Qty (editable if planned; read-only text if eaten) */}
+              {e.status === 'planned' ? (
+                <AutoSaveQtyForm
+                  ref={qtyRef}
+                  entryId={e.id}
+                  unit={e.unit}
+                  initialQty={e.qty}
+                  selectedYMD={selectedYMD}
+                  onQtyOptimistic={(q) => onQtyOptimistic(e.id, q)}
+                  onPendingChange={setQtyPending}
+                />
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">{String(e.qty)}</span>
+                  <span>{e.unit}</span>
+                </div>
+              )}
 
               <span aria-hidden="true">•</span>
 
@@ -278,6 +296,7 @@ function SortableEntry({
                 selectedYMD={selectedYMD}
                 onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
                 onPendingChange={setTogglePending}
+                onPreSubmit={() => qtyRef.current?.commitNow()}
               />
             </div>
 
@@ -299,21 +318,20 @@ function SortableEntry({
 }
 
 /* ----- Auto-save qty sub-component (native spinner only) ----- */
-function AutoSaveQtyForm({
-  entryId,
-  unit,
-  initialQty,
-  selectedYMD,
-  onQtyOptimistic,
-  onPendingChange,
-}: {
+
+export type AutoSaveQtyFormHandle = { commitNow: () => void };
+
+const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   entryId: string;
   unit: string;
   initialQty: string;
   selectedYMD: string;
   onQtyOptimistic: (qty: number) => void;
   onPendingChange: (p: boolean) => void;
-}) {
+}>(function AutoSaveQtyForm(
+  { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, onPendingChange },
+  ref
+) {
   const formRef = useRef<HTMLFormElement>(null);
   const [val, setVal] = useState(initialQty);
   const debouncedSubmit = useDebouncedSubmit(600);
@@ -341,6 +359,14 @@ function AutoSaveQtyForm({
       debouncedSubmit(form);
     }
   }
+
+  // Expose "commitNow" so parent can flush before toggling to eaten
+  useImperativeHandle(ref, () => ({
+    commitNow: () => {
+      const n = parseQty(val);
+      if (n != null) commit(n, 'immediate');
+    },
+  }), [val]);
 
   return (
     <form
@@ -388,7 +414,7 @@ function AutoSaveQtyForm({
       <RefreshOnActionComplete debounceMs={250} />
     </form>
   );
-}
+});
 
 /* ----- Stable status toggle form (prevents unmount during optimistic flip) ----- */
 function ToggleStatusForm({
@@ -397,12 +423,14 @@ function ToggleStatusForm({
   selectedYMD,
   onSubmitOptimistic,
   onPendingChange,
+  onPreSubmit,
 }: {
   entryId: string;
   currentStatus: 'planned' | 'eaten';
   selectedYMD: string;
   onSubmitOptimistic: (next: 'planned' | 'eaten') => void;
   onPendingChange: (p: boolean) => void;
+  onPreSubmit: () => void; // flush qty before toggling
 }) {
   const nextRef = useRef<HTMLInputElement>(null);
   const targetRef = useRef<'planned' | 'eaten'>(currentStatus === 'planned' ? 'eaten' : 'planned');
@@ -430,6 +458,7 @@ function ToggleStatusForm({
             className="px-2 py-0.5 hover:bg-gray-50"
             title="Mark as eaten"
             onClick={() => {
+              onPreSubmit(); // flush any pending qty edit
               targetRef.current = 'eaten';
               if (nextRef.current) nextRef.current.value = 'eaten';
             }}
