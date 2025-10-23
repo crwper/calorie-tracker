@@ -269,23 +269,17 @@ function SortableEntry({
           {/* Bottom row container (relative for bottom-right indicator) */}
           <div className="col-span-2 relative mt-1">
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 pr-16">
-              {/* Bottom-left: Qty (editable if planned; read-only text if eaten) */}
-              {e.status === 'planned' ? (
-                <AutoSaveQtyForm
-                  ref={qtyRef}
-                  entryId={e.id}
-                  unit={e.unit}
-                  initialQty={e.qty}
-                  selectedYMD={selectedYMD}
-                  onQtyOptimistic={(q) => onQtyOptimistic(e.id, q)}
-                  onPendingChange={setQtyPending}
-                />
-              ) : (
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{String(e.qty)}</span>
-                  <span>{e.unit}</span>
-                </div>
-              )}
+              {/* Bottom-left: Qty — editable when planned; text-only when eaten (form stays mounted) */}
+              <AutoSaveQtyForm
+                ref={qtyRef}
+                entryId={e.id}
+                unit={e.unit}
+                initialQty={e.qty}
+                selectedYMD={selectedYMD}
+                onQtyOptimistic={(q) => onQtyOptimistic(e.id, q)}
+                onPendingChange={setQtyPending}
+                readOnly={e.status === 'eaten'}
+              />
 
               <span aria-hidden="true">•</span>
 
@@ -328,8 +322,9 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   selectedYMD: string;
   onQtyOptimistic: (qty: number) => void;
   onPendingChange: (p: boolean) => void;
+  readOnly?: boolean;
 }>(function AutoSaveQtyForm(
-  { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, onPendingChange },
+  { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, onPendingChange, readOnly = false },
   ref
 ) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -340,6 +335,11 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   useEffect(() => {
     setVal(initialQty);
   }, [initialQty]);
+
+  // Safety: if this form ever unmounts, clear pending state so the row indicator can't stick
+  useEffect(() => {
+    return () => onPendingChange(false);
+  }, [onPendingChange]);
 
   function parseQty(v: string): number | null {
     const n = parseFloat(v);
@@ -382,34 +382,46 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
     >
       <input type="hidden" name="date" value={selectedYMD} />
       <input type="hidden" name="entry_id" value={entryId} />
-      <label htmlFor={`qty-${entryId}`} className="sr-only">
-        Quantity
-      </label>
-      <input
-        id={`qty-${entryId}`}
-        name="qty"
-        type="number"
-        step="any"
-        min="0"
-        inputMode="decimal"
-        value={val}
-        onInput={(e) => {
-          const nextStr = e.currentTarget.value;
-          setVal(nextStr);
-          const n = parseQty(nextStr);
-          if (n != null) commit(n, 'debounced');
-        }}
-        onBlur={(e) => {
-          const n = parseQty(e.currentTarget.value);
-          if (n != null) {
-            commit(n, 'immediate');
-          } else {
-            setVal(initialQty);
-          }
-        }}
-        className="w-20 border rounded px-2 py-1 text-xs"
-      />
-      <span>{unit}</span>
+      {readOnly ? (
+        <>
+          {/* Text-only when eaten */}
+          <span className="font-medium">{val}</span>
+          <span>{unit}</span>
+          {/* Keep a hidden qty field so the form instance stays stable and commitNow can still set it */}
+          <input name="qty" value={val} readOnly hidden aria-hidden="true" />
+        </>
+      ) : (
+        <>
+          <label htmlFor={`qty-${entryId}`} className="sr-only">
+            Quantity
+          </label>
+          <input
+            id={`qty-${entryId}`}
+            name="qty"
+            type="number"
+            step="any"
+            min="0"
+            inputMode="decimal"
+            value={val}
+            onInput={(e) => {
+              const nextStr = e.currentTarget.value;
+              setVal(nextStr);
+              const n = parseQty(nextStr);
+              if (n != null) commit(n, 'debounced');
+            }}
+            onBlur={(e) => {
+              const n = parseQty(e.currentTarget.value);
+              if (n != null) {
+                commit(n, 'immediate');
+              } else {
+                setVal(initialQty);
+              }
+            }}
+            className="w-20 border rounded px-2 py-1 text-xs"
+          />
+          <span>{unit}</span>
+        </>
+      )}
       <FormPendingProbe onChange={onPendingChange} />
       <RefreshOnActionComplete debounceMs={250} />
     </form>
