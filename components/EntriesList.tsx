@@ -57,6 +57,33 @@ function useDebouncedSubmit(delay = 600) {
   };
 }
 
+/* Probe pending state of the nearest <form> and lift it up */
+function FormPendingProbe({ onChange }: { onChange: (p: boolean) => void }) {
+  const { pending } = useFormStatus();
+  useEffect(() => onChange(pending), [pending, onChange]);
+  return null;
+}
+
+/* Keep indicator visible briefly after last pending turns false */
+function useStickyBoolean(on: boolean, minOnMs = 250) {
+  const [vis, setVis] = useState(false);
+  const timer = useRef<number | null>(null);
+  useEffect(() => {
+    if (on) {
+      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      setVis(true);
+    } else {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => {
+        setVis(false);
+        timer.current = null;
+      }, minOnMs);
+    }
+    return () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  }, [on, minOnMs]);
+  return vis;
+}
+
 export default function EntriesList({
   entries,
   selectedYMD,
@@ -186,6 +213,11 @@ function SortableEntry({
     opacity: isDragging ? 0.6 : 1,
   };
 
+  // Row-level pending from qty + toggle (stable across optimistic UI)
+  const [qtyPending, setQtyPending] = useState(false);
+  const [togglePending, setTogglePending] = useState(false);
+  const showSaving = useStickyBoolean(qtyPending || togglePending, 250);
+
   return (
     <li
       ref={setNodeRef}
@@ -210,7 +242,7 @@ function SortableEntry({
         </button>
       </div>
 
-      {/* Content grid: TL name, TR kcal+delete, BL qty+toggle, BR saving... */}
+      {/* Content grid: TL name, TR kcal+delete, BL qty+toggle, BR saving… */}
       <div className="flex-1">
         <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
           {/* Top-left: description */}
@@ -224,65 +256,41 @@ function SortableEntry({
             <DeleteEntryButton entryId={e.id} date={selectedYMD} />
           </div>
 
-          {/* Bottom row: left = qty + toggle; right = Saving… (absolute) */}
+          {/* Bottom row container (relative for bottom-right indicator) */}
           <div className="col-span-2 relative mt-1">
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 pr-16">
-              {/* Qty editor — auto-save; no +/- buttons */}
+              {/* Bottom-left: Qty editor — native spinners, auto-save */}
               <AutoSaveQtyForm
                 entryId={e.id}
                 unit={e.unit}
                 initialQty={e.qty}
                 selectedYMD={selectedYMD}
                 onQtyOptimistic={(q) => onQtyOptimistic(e.id, q)}
+                onPendingChange={setQtyPending}
               />
 
               <span aria-hidden="true">•</span>
 
-              {/* Status segmented control */}
-              <div className="inline-flex overflow-hidden rounded border">
-                {e.status === 'planned' ? (
-                  <>
-                    <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">
-                      Planned
-                    </span>
-                    <form
-                      action={toggleEntryStatusAction}
-                      onSubmit={() => onStatusOptimistic(e.id, 'eaten')}
-                    >
-                      <input type="hidden" name="date" value={selectedYMD} />
-                      <input type="hidden" name="entry_id" value={e.id} />
-                      <input type="hidden" name="next_status" value="eaten" />
-                      <button type="submit" className="px-2 py-0.5 hover:bg-gray-50" title="Mark as eaten">
-                        Eaten
-                      </button>
-                      {/* Saving indicator sits bottom-right for this form too */}
-                      <SavingDot className="absolute right-0 bottom-0" />
-                      <RefreshOnActionComplete debounceMs={250} />
-                    </form>
-                  </>
-                ) : (
-                  <>
-                    <form
-                      action={toggleEntryStatusAction}
-                      onSubmit={() => onStatusOptimistic(e.id, 'planned')}
-                    >
-                      <input type="hidden" name="date" value={selectedYMD} />
-                      <input type="hidden" name="entry_id" value={e.id} />
-                      <input type="hidden" name="next_status" value="planned" />
-                      <button type="submit" className="px-2 py-0.5 hover:bg-gray-50" title="Mark as planned">
-                        Planned
-                      </button>
-                      {/* Same absolute position; whichever form is pending will show */}
-                      <SavingDot className="absolute right-0 bottom-0" />
-                      <RefreshOnActionComplete debounceMs={250} />
-                    </form>
-                    <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">
-                      Eaten
-                    </span>
-                  </>
-                )}
-              </div>
+              {/* Bottom-left: STABLE single form for status toggle */}
+              <ToggleStatusForm
+                entryId={e.id}
+                currentStatus={e.status}
+                selectedYMD={selectedYMD}
+                onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
+                onPendingChange={setTogglePending}
+              />
             </div>
+
+            {/* Bottom-right: row-level Saving… indicator (covers qty or toggle) */}
+            {showSaving && (
+              <span
+                className="absolute right-0 bottom-0 text-[11px] text-gray-500"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                Saving…
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -297,12 +305,14 @@ function AutoSaveQtyForm({
   initialQty,
   selectedYMD,
   onQtyOptimistic,
+  onPendingChange,
 }: {
   entryId: string;
   unit: string;
   initialQty: string;
   selectedYMD: string;
   onQtyOptimistic: (qty: number) => void;
+  onPendingChange: (p: boolean) => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [val, setVal] = useState(initialQty);
@@ -374,22 +384,78 @@ function AutoSaveQtyForm({
         className="w-20 border rounded px-2 py-1 text-xs"
       />
       <span>{unit}</span>
-      {/* Bottom-right Saving… (relative parent is the bottom row container) */}
-      <SavingDot className="absolute right-0 bottom-0" />
+      <FormPendingProbe onChange={onPendingChange} />
       <RefreshOnActionComplete debounceMs={250} />
     </form>
   );
 }
 
-function SavingDot({ className = '' }: { className?: string }) {
-  const { pending } = useFormStatus();
+/* ----- Stable status toggle form (prevents unmount during optimistic flip) ----- */
+function ToggleStatusForm({
+  entryId,
+  currentStatus,
+  selectedYMD,
+  onSubmitOptimistic,
+  onPendingChange,
+}: {
+  entryId: string;
+  currentStatus: 'planned' | 'eaten';
+  selectedYMD: string;
+  onSubmitOptimistic: (next: 'planned' | 'eaten') => void;
+  onPendingChange: (p: boolean) => void;
+}) {
+  const nextRef = useRef<HTMLInputElement>(null);
+  const targetRef = useRef<'planned' | 'eaten'>(currentStatus === 'planned' ? 'eaten' : 'planned');
+
+  // Keep target switch default aligned with current status
+  useEffect(() => {
+    targetRef.current = currentStatus === 'planned' ? 'eaten' : 'planned';
+  }, [currentStatus]);
+
   return (
-    <span
-      className={`text-[11px] text-gray-500 ${className}`}
-      aria-live="polite"
-      aria-atomic="true"
+    <form
+      action={toggleEntryStatusAction}
+      className="inline-flex overflow-hidden rounded border"
+      onSubmit={() => onSubmitOptimistic(targetRef.current)}
     >
-      {pending ? 'Saving…' : ''}
-    </span>
+      <input type="hidden" name="date" value={selectedYMD} />
+      <input type="hidden" name="entry_id" value={entryId} />
+      <input ref={nextRef} type="hidden" name="next_status" value={targetRef.current} />
+
+      {currentStatus === 'planned' ? (
+        <>
+          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">Planned</span>
+          <button
+            type="submit"
+            className="px-2 py-0.5 hover:bg-gray-50"
+            title="Mark as eaten"
+            onClick={() => {
+              targetRef.current = 'eaten';
+              if (nextRef.current) nextRef.current.value = 'eaten';
+            }}
+          >
+            Eaten
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            type="submit"
+            className="px-2 py-0.5 hover:bg-gray-50"
+            title="Mark as planned"
+            onClick={() => {
+              targetRef.current = 'planned';
+              if (nextRef.current) nextRef.current.value = 'planned';
+            }}
+          >
+            Planned
+          </button>
+          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">Eaten</span>
+        </>
+      )}
+
+      <FormPendingProbe onChange={onPendingChange} />
+      <RefreshOnActionComplete debounceMs={250} />
+    </form>
   );
 }
