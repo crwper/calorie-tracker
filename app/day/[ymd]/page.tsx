@@ -17,18 +17,10 @@ import {
 } from '@/app/actions';
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 import EntriesList from '@/components/EntriesList';
+import CatalogChipPicker from '@/components/CatalogChipPicker';
 
-export default async function DayPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ ymd: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
-  const sp = await searchParams;
-  const qRaw = typeof sp.q === 'string' ? sp.q : '';
-  const q = qRaw.trim();
 
   const supabase = await createClient();
 
@@ -80,22 +72,12 @@ export default async function DayPage({
   }
 
   // Fetch a small set for chips (favorites first, then newest)
-  let chipQuery = supabase
+  const { data: chipItems } = await supabase
     .from('catalog_items')
-   .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at');
-
-  // If q is present, filter by name (case-insensitive) and bump the limit.
-  if (q) {
-    chipQuery = chipQuery.ilike('name', `%${q}%`);
-  }
-
-  // Temporary tie-breaker: created_at DESC (until we add recency-by-day + manual order)
-  chipQuery = chipQuery
+    .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')
     .order('is_favorite', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(q ? 100 : 10);
-
-  const { data: chipItems } = await chipQuery;
+    .limit(200); // fetch a bigger slice so the live filter feels complete
 
   // Totals for the visible day (derived from the current server fetch)
   const totalEaten = entries
@@ -126,54 +108,11 @@ export default async function DayPage({
             <div className="mb-2 text-xs font-semibold text-gray-700 uppercase tracking-wide">
               Catalog
             </div>
-            {/* Search (GET) */}
-            <form
-              method="GET"
-              action={`/day/${selectedYMD}`}
-              className="mb-2 flex items-center gap-2"
-            >
-              <label htmlFor="q" className="sr-only">Search catalog</label>
-              <input
-                id="q"
-                name="q"
-                defaultValue={q}
-                placeholder="Search catalog…"
-                className="border rounded px-2 py-1 text-sm flex-1 min-w-0"
-              />
-              {q ? (
-                <Link href={`/day/${selectedYMD}`} className="rounded border px-2 py-1 text-sm hover:bg-gray-50">Clear</Link>
-              ) : null}
-              <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">Search</button>
-            </form>
-            <div className="flex flex-wrap gap-2">
-              {(chipItems ?? []).map((it) => (
-                <form key={it.id} action={addEntryFromCatalogAction}>
-                  <input type="hidden" name="date" value={selectedYMD} />
-                  {/* Default multiplier = 1 */}
-                  <input type="hidden" name="mult" value="1" />
-                  <button
-                    type="submit"
-                    name="catalog_item_id"
-                    value={it.id}
-                    className="border rounded px-2 py-1 text-left text-xs bg-slate-50 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                    aria-label={`Add ${it.name}`}
-                  >
-                    <div className="font-medium">{it.name}</div>
-                    <div className="text-[11px] text-gray-600">
-                      {it.default_qty} {it.unit} • {Number(it.kcal_per_unit).toFixed(2)} kcal/{it.unit}
-                    </div>
-                  </button>
-                </form>
-              ))}
-              {(chipItems ?? []).length === 0 && (
-                <div className="text-sm text-gray-600">
-                  {q
-                    ? <>No matches for “{q}”.</>
-                    : <>No catalog items yet.</>
-                  }
-                </div>
-              )}
-            </div>
+            <CatalogChipPicker
+              items={chipItems ?? []}
+              selectedYMD={selectedYMD}
+              addFromCatalogAction={addEntryFromCatalogAction}
+            />
             <div className="mt-2 text-sm text-gray-600">
               <Link
                 href={{
