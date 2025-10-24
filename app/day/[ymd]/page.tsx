@@ -18,8 +18,17 @@ import {
 import DeleteEntryButton from '@/components/DeleteEntryButton';
 import EntriesList from '@/components/EntriesList';
 
-export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
+export default async function DayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ ymd: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { ymd } = await params;
+  const sp = await searchParams;
+  const qRaw = typeof sp.q === 'string' ? sp.q : '';
+  const q = qRaw.trim();
 
   const supabase = await createClient();
 
@@ -71,12 +80,22 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   }
 
   // Fetch a small set for chips (favorites first, then newest)
-  const { data: chipItems } = await supabase
+  let chipQuery = supabase
     .from('catalog_items')
-    .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')
+   .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at');
+
+  // If q is present, filter by name (case-insensitive) and bump the limit.
+  if (q) {
+    chipQuery = chipQuery.ilike('name', `%${q}%`);
+  }
+
+  // Temporary tie-breaker: created_at DESC (until we add recency-by-day + manual order)
+  chipQuery = chipQuery
     .order('is_favorite', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(10);
+    .limit(q ? 100 : 10);
+
+  const { data: chipItems } = await chipQuery;
 
   // Totals for the visible day (derived from the current server fetch)
   const totalEaten = entries
@@ -102,11 +121,30 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       <section className="space-y-2">
         <h2 className="font-semibold">Add to today</h2>
         <div className="rounded-lg border bg-white p-4 space-y-4">
-          {/* Catalog subsection */}
+          {/* catalogpage subsection */}
           <div>
             <div className="mb-2 text-xs font-semibold text-gray-700 uppercase tracking-wide">
               Catalog
             </div>
+            {/* Search (GET) */}
+            <form
+              method="GET"
+              action={`/day/${selectedYMD}`}
+              className="mb-2 flex items-center gap-2"
+            >
+              <label htmlFor="q" className="sr-only">Search catalog</label>
+              <input
+                id="q"
+                name="q"
+                defaultValue={q}
+                placeholder="Search catalog…"
+                className="border rounded px-2 py-1 text-sm flex-1 min-w-0"
+              />
+              {q ? (
+                <Link href={`/day/${selectedYMD}`} className="rounded border px-2 py-1 text-sm hover:bg-gray-50">Clear</Link>
+              ) : null}
+              <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">Search</button>
+            </form>
             <div className="flex flex-wrap gap-2">
               {(chipItems ?? []).map((it) => (
                 <form key={it.id} action={addEntryFromCatalogAction}>
@@ -128,7 +166,12 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
                 </form>
               ))}
               {(chipItems ?? []).length === 0 && (
-                <div className="text-sm text-gray-600">No catalog items yet.</div>
+                <div className="text-sm text-gray-600">
+                  {q
+                    ? <>No matches for “{q}”.</>
+                    : <>No catalog items yet.</>
+                  }
+                </div>
               )}
             </div>
             <div className="mt-2 text-sm text-gray-600">
