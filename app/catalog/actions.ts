@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
 function okNum(n: unknown) {
@@ -13,6 +14,11 @@ export async function createCatalogItemAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
+
+  // Optional return target + intent
+  const rawNext = String(formData.get('next') ?? '');
+  const next = rawNext.startsWith('/') ? rawNext : null;
+  const intent = String(formData.get('intent') ?? 'create');
 
   const name = String(formData.get('name') ?? '').trim();
   const unit = String(formData.get('unit') ?? '').trim();
@@ -32,8 +38,16 @@ export async function createCatalogItemAction(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
+  // If user chose "Create & return" and provided a safe relative path, go back.
+  if (intent === 'create_return' && next) {
+    // Revalidate the destination so chips pick up the new item immediately.
+    revalidatePath(next);
+    redirect(next);
+  }
+
+  // Default behavior: stay on catalog
   revalidatePath('/catalog');
-  revalidatePath('/'); // chips
+  revalidatePath('/'); // chips (root redirects to /day/<today>)
 }
 
 export async function updateCatalogItemAction(formData: FormData) {
