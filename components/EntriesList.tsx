@@ -232,10 +232,7 @@ function SortableEntry({
     <li
       ref={setNodeRef}
       style={style}
-      className={`p-2 flex items-stretch gap-2 rounded-md ${
-        // ✅ Completed rows softened; no special styling for planned rows.
-        e.status === 'eaten' ? 'opacity-70' : ''
-      }`}
+      className={`p-2 flex items-stretch gap-2 rounded-md}`}
     >
       {/* Drag handle: full-height left edge */}
       <div className="shrink-0 self-stretch">
@@ -265,7 +262,7 @@ function SortableEntry({
         />
       </div>
 
-      {/* Content grid: TL name, TR kcal+delete, BL qty, BR saving… */}
+      {/* Content grid: TL name, TR kcal, BL qty, BR saving… */}
       <div className="flex-1">
         <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
           {/* Top-left: description */}
@@ -273,10 +270,9 @@ function SortableEntry({
             <div className="font-medium">{e.name}</div>
           </div>
 
-          {/* Top-right: kcal + delete */}
-          <div className="col-[2/3] row-[1/2] flex items-center gap-3 justify-end">
+          {/* Top-right: kcal */}
+          <div className="col-[2/3] row-[1/2] flex items-center justify-end">
             <div className="text-sm">{Number(e.kcal_snapshot).toFixed(2)} kcal</div>
-            <DeleteEntryButton entryId={e.id} date={selectedYMD} />
           </div>
 
           {/* Bottom row container (relative for bottom-right indicator) */}
@@ -307,6 +303,11 @@ function SortableEntry({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Right column: delete icon centered vertically */}
+      <div className="shrink-0 self-stretch flex items-center justify-center w-7">
+        <DeleteEntryButton entryId={e.id} date={selectedYMD} />
       </div>
     </li>
   );
