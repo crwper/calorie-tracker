@@ -132,7 +132,12 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
               )}
             </div>
             <div className="mt-2 text-sm text-gray-600">
-              <Link href="/catalog" className="underline">Manage catalog →</Link>
+              <Link
+                href={{
+                  pathname: '/catalog',
+                  query: { next: `/day/${selectedYMD}` },
+                }}
+                className="underline">Manage catalog →</Link>
             </div>
           </div>
 
