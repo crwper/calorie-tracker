@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
   createCatalogItemAction,
@@ -9,7 +10,16 @@ import DeleteCatalogItemButton from '@/components/DeleteCatalogItemButton';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CatalogPage() {
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams;
+  const rawNext = typeof sp.next === 'string' ? sp.next : null;
+  // Safety: only allow relative paths as return targets
+  const next = rawNext && rawNext.startsWith('/') ? rawNext : null;
+
   const supabase = await createClient();
 
   // Auth gate: anonymous → /login?next=/catalog
@@ -26,7 +36,15 @@ export default async function CatalogPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-6 font-sans bg-slate-50">
-      <h1 className="text-2xl font-bold">Catalog</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Catalog</h1>
+        {next && (
+          <Link
+            href={next}
+            className="rounded border px-2 py-1 text-sm hover:bg-gray-50"
+          >‹ Back to day</Link>
+        )}
+      </div>
 
       {/* Create new */}
       <section className="rounded-lg border bg-white p-4">
