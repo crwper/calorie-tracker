@@ -220,10 +220,10 @@ function SortableEntry({
     opacity: isDragging ? 0.6 : 1,
   };
 
-  // Row-level pending from qty + toggle (stable across optimistic UI)
+  // Row-level pending from qty + checkbox (stable across optimistic UI)
   const [qtyPending, setQtyPending] = useState(false);
-  const [togglePending, setTogglePending] = useState(false);
-  const showSaving = useStickyBoolean(qtyPending || togglePending, 250);
+  const [statusPending, setStatusPending] = useState(false);
+  const showSaving = useStickyBoolean(qtyPending || statusPending, 250);
 
   // Expose an imperative "commitNow" on qty form so we can flush before toggle->eaten
   const qtyRef = useRef<AutoSaveQtyFormHandle | null>(null);
@@ -233,10 +233,11 @@ function SortableEntry({
       ref={setNodeRef}
       style={style}
       className={`p-2 flex items-stretch gap-2 rounded-md ${
-        e.status === 'planned' ? 'bg-amber-50 border-l-4 border-amber-400' : ''
+        // ✅ Completed rows softened; no special styling for planned rows.
+        e.status === 'eaten' ? 'opacity-70' : ''
       }`}
     >
-      {/* Drag handle: full-height left edge, icon only; half width */}
+      {/* Drag handle: full-height left edge */}
       <div className="shrink-0 self-stretch">
         <button
           type="button"
@@ -252,7 +253,19 @@ function SortableEntry({
         </button>
       </div>
 
-      {/* Content grid: TL name, TR kcal+delete, BL qty/toggle, BR saving… */}
+      {/* Checkbox column (centered vertically, toned down styling) */}
+      <div className="shrink-0 w-8 flex items-center justify-center">
+        <CheckboxStatusForm
+          entryId={e.id}
+          currentStatus={e.status}
+          selectedYMD={selectedYMD}
+          onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
+          onPendingChange={setStatusPending}
+          onPreSubmit={() => qtyRef.current?.commitNow()}
+        />
+      </div>
+
+      {/* Content grid: TL name, TR kcal+delete, BL qty, BR saving… */}
       <div className="flex-1">
         <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
           {/* Top-left: description */}
@@ -280,21 +293,9 @@ function SortableEntry({
                 onPendingChange={setQtyPending}
                 readOnly={e.status === 'eaten'}
               />
-
-              <span aria-hidden="true">•</span>
-
-              {/* Bottom-left: STABLE single form for status toggle */}
-              <ToggleStatusForm
-                entryId={e.id}
-                currentStatus={e.status}
-                selectedYMD={selectedYMD}
-                onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
-                onPendingChange={setTogglePending}
-                onPreSubmit={() => qtyRef.current?.commitNow()}
-              />
             </div>
 
-            {/* Bottom-right: row-level Saving… indicator (covers qty or toggle) */}
+            {/* Bottom-right: row-level Saving… indicator (covers qty or status) */}
             {showSaving && (
               <span
                 className="absolute right-0 bottom-0 text-[11px] text-gray-500"
@@ -428,8 +429,8 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   );
 });
 
-/* ----- Stable status toggle form (prevents unmount during optimistic flip) ----- */
-function ToggleStatusForm({
+/* ----- Checkbox status form (neutral/toned-down) ----- */
+function CheckboxStatusForm({
   entryId,
   currentStatus,
   selectedYMD,
@@ -444,56 +445,48 @@ function ToggleStatusForm({
   onPendingChange: (p: boolean) => void;
   onPreSubmit: () => void; // flush qty before toggling
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
   const nextRef = useRef<HTMLInputElement>(null);
-  const targetRef = useRef<'planned' | 'eaten'>(currentStatus === 'planned' ? 'eaten' : 'planned');
+  const targetRef = useRef<'planned' | 'eaten'>(currentStatus);
 
-  // Keep target switch default aligned with current status
+  // Keep next target aligned if the server refresh changes currentStatus
   useEffect(() => {
-    targetRef.current = currentStatus === 'planned' ? 'eaten' : 'planned';
+    targetRef.current = currentStatus;
+    if (nextRef.current) nextRef.current.value = currentStatus;
   }, [currentStatus]);
 
   return (
     <form
+      ref={formRef}
       action={toggleEntryStatusAction}
-      className="inline-flex overflow-hidden rounded border"
+      className="inline-flex items-center justify-center"
       onSubmit={() => onSubmitOptimistic(targetRef.current)}
     >
       <input type="hidden" name="date" value={selectedYMD} />
       <input type="hidden" name="entry_id" value={entryId} />
-      <input ref={nextRef} type="hidden" name="next_status" value={targetRef.current} />
+      <input ref={nextRef} type="hidden" name="next_status" value={currentStatus} />
 
-      {currentStatus === 'planned' ? (
-        <>
-          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">Planned</span>
-          <button
-            type="submit"
-            className="px-2 py-0.5 hover:bg-gray-50"
-            title="Mark as eaten"
-            onClick={() => {
-              onPreSubmit(); // flush any pending qty edit
-              targetRef.current = 'eaten';
-              if (nextRef.current) nextRef.current.value = 'eaten';
-            }}
-          >
-            Eaten
-          </button>
-        </>
-      ) : (
-        <>
-          <button
-            type="submit"
-            className="px-2 py-0.5 hover:bg-gray-50"
-            title="Mark as planned"
-            onClick={() => {
-              targetRef.current = 'planned';
-              if (nextRef.current) nextRef.current.value = 'planned';
-            }}
-          >
-            Planned
-          </button>
-          <span className="px-2 py-0.5 bg-slate-200 text-slate-900 font-medium select-none">Eaten</span>
-        </>
-      )}
+      <input
+        id={`eaten-${entryId}`}
+        type="checkbox"
+        className="
+          h-4 w-4 cursor-pointer
+          border border-gray-300 rounded
+          accent-gray-500
+          outline-none focus:ring-2 focus:ring-gray-300
+        "
+        aria-label="Eaten"
+        title={currentStatus === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
+        checked={currentStatus === 'eaten'}
+        onChange={(e) => {
+          // Flush qty if needed, then submit with the new target status
+          onPreSubmit();
+          const next = e.currentTarget.checked ? 'eaten' : 'planned';
+          targetRef.current = next;
+          if (nextRef.current) nextRef.current.value = next;
+          formRef.current?.requestSubmit();
+        }}
+      />
 
       <FormPendingProbe onChange={onPendingChange} />
       <RefreshOnActionComplete debounceMs={250} />
