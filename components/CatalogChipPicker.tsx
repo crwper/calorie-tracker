@@ -72,7 +72,7 @@ export default function CatalogChipPicker({
             >
               <div className="font-medium">{it.name}</div>
               <div className="text-[11px] text-gray-600">
-                {Number(it.default_qty).toString()} {it.unit} • {Number(it.kcal_per_unit).toFixed(2)} kcal/{it.unit}
+                {Number(it.default_qty).toString()} {it.unit}
               </div>
             </button>
             {/* Ensure the day view refreshes after adding */}
