@@ -10,8 +10,10 @@ type Item = {
   unit: string;
   kcal_per_unit: number | string;
   default_qty: number | string;
-  is_favorite: boolean;
   created_at: string;
+  // From RPC (not required by the UI, but harmless to keep around):
+  last_used_date?: string | null;
+  first_order_on_last_day?: number | null;
 };
 
 export default function CatalogChipPicker({

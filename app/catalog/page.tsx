@@ -1,11 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import {
-  createCatalogItemAction,
-  updateCatalogItemAction,
-  toggleFavoriteCatalogItemAction,
-} from './actions';
+import { createCatalogItemAction, updateCatalogItemAction } from './actions';
 import DeleteCatalogItemButton from '@/components/DeleteCatalogItemButton';
 
 export const dynamic = 'force-dynamic';
@@ -30,8 +26,7 @@ export default async function CatalogPage({
 
   const { data: items } = await supabase
     .from('catalog_items')
-    .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')
-    .order('is_favorite', { ascending: false })
+    .select('id,name,unit,kcal_per_unit,default_qty,created_at')
     .order('name', { ascending: true });
 
   return (
@@ -47,7 +42,7 @@ export default async function CatalogPage({
       <section className="space-y-2">
         <h2 className="font-semibold">Add item</h2>
         <div className="rounded-lg border bg-white p-4">
-          <form action={createCatalogItemAction} className="grid grid-cols-6 gap-2 items-end">
+          <form action={createCatalogItemAction} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 items-end">
             {next ? <input type="hidden" name="next" value={next} /> : null}
           <div className="col-span-2">
             <label className="text-xs text-gray-600">Name</label>
@@ -67,9 +62,12 @@ export default async function CatalogPage({
             <input name="default_qty" type="number" step="any" min="0" inputMode="decimal"
                    className="w-full border rounded px-2 py-1 text-sm" placeholder="130" />
           </div>
-          <div className="flex items-center gap-2">
-            <input id="fav" name="is_favorite" type="checkbox" className="h-4 w-4" />
-            <label htmlFor="fav" className="text-sm">★ Favorite</label>
+          {/* Reserve the column-6 width so first-row inputs match edit rows */}
+          <div aria-hidden className="flex items-center justify-end gap-1">
+            {/* width match for Save */}
+            <button type="button" className="rounded border px-3 py-1 text-sm invisible">Save</button>
+            {/* width match for Delete icon */}
+            <div className="inline-flex h-7 w-7 items-center justify-center invisible" />
           </div>
           <div className="col-span-6 flex gap-2">
             <button
@@ -108,49 +106,69 @@ export default async function CatalogPage({
             <ul className="divide-y">
               {(items ?? []).map((it) => (
                 <li key={it.id} className="py-2">
-                  <div className="flex flex-wrap items-end gap-2">
-                    {/* Quick favorite toggle */}
-                    <form action={toggleFavoriteCatalogItemAction}>
-                      <input type="hidden" name="id" value={it.id} />
-                      <input type="hidden" name="next" value={(!it.is_favorite).toString()} />
+                  {/* Single grid row; last column contains Save + Delete */}
+                  <form
+                    action={updateCatalogItemAction}
+                    className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 items-end"
+                  >
+                    <input type="hidden" name="id" value={it.id} />
+
+                    <div className="col-span-2">
+                      <label className="text-xs text-gray-600">Name</label>
+                      <input
+                        name="name"
+                        defaultValue={it.name}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-600">Unit</label>
+                      <input
+                        name="unit"
+                        defaultValue={it.unit}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-600">kcal / unit</label>
+                      <input
+                        name="kcal_per_unit"
+                        type="number"
+                        step="any"
+                        min="0"
+                      inputMode="decimal"
+                        defaultValue={String(it.kcal_per_unit)}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-600">Default qty</label>
+                      <input
+                        name="default_qty"
+                        type="number"
+                        step="any"
+                        min="0"
+                        inputMode="decimal"
+                        defaultValue={String(it.default_qty)}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                    </div>
+
+                    {/* Column 6: Save + Delete together (no nested forms) */}
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         type="submit"
-                        className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                        title={it.is_favorite ? 'Unfavorite' : 'Favorite'}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+                        title="Save changes"
                       >
-                        {it.is_favorite ? '★' : '☆'}
+                        Save
                       </button>
-                    </form>
-
-                    {/* Inline edit form */}
-                    <form action={updateCatalogItemAction} className="flex flex-wrap items-end gap-2 flex-1">
-                      <input type="hidden" name="id" value={it.id} />
-                      <div>
-                        <label className="text-xs text-gray-600">Name</label>
-                        <input name="name" defaultValue={it.name} className="border rounded px-2 py-1 text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600">Unit</label>
-                        <input name="unit" defaultValue={it.unit} className="border rounded px-2 py-1 text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600">kcal / unit</label>
-                        <input name="kcal_per_unit" type="number" step="any" min="0" inputMode="decimal"
-                              defaultValue={String(it.kcal_per_unit)}
-                              className="border rounded px-2 py-1 text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600">Default qty</label>
-                        <input name="default_qty" type="number" step="any" min="0" inputMode="decimal"
-                              defaultValue={String(it.default_qty)}
-                              className="border rounded px-2 py-1 text-sm" />
-                      </div>
-                      <button type="submit" className="rounded border px-2 py-1 text-xs hover:bg-gray-50">Save</button>
-                    </form>
-
-                    {/* Delete */}
-                    <DeleteCatalogItemButton id={it.id} />
-                  </div>
+                      <DeleteCatalogItemButton id={it.id} inlineInParentForm />
+                    </div>
+                  </form>
                 </li>
               ))}
             </ul>

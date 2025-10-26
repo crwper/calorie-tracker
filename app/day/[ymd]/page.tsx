@@ -71,13 +71,10 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     }));
   }
 
-  // Fetch a small set for chips (favorites first, then newest)
-  const { data: chipItems } = await supabase
-    .from('catalog_items')
-    .select('id,name,unit,kcal_per_unit,default_qty,is_favorite,created_at')
-    .order('is_favorite', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(200); // fetch a bigger slice so the live filter feels complete
+  // Ordered by: last used date desc, then first appearance that day asc,
+  // then name asc for never-used items.
+  const { data: orderedItems } = await supabase.rpc('get_catalog_items_usage_order');
+  const chipItems = (orderedItems ?? []).slice(0, 200); // keep UI responsive
 
   // Totals for the visible day (derived from the current server fetch)
   const totalEaten = entries

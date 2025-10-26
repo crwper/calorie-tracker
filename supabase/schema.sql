@@ -85,12 +85,45 @@ $$;
 ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."db_now"() RETURNS timestamp with time zone
-    LANGUAGE "sql" STABLE
-    AS $$ select now(); $$;
+CREATE OR REPLACE FUNCTION "public"."get_catalog_items_usage_order"() RETURNS TABLE("id" "uuid", "name" "text", "unit" "text", "kcal_per_unit" numeric, "default_qty" numeric, "created_at" timestamp with time zone, "last_used_date" "date", "first_order_on_last_day" integer)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+WITH last_use AS (
+  SELECT e.catalog_item_id AS id, MAX(d.date) AS last_date
+  FROM public.entries e
+  JOIN public.days d ON d.id = e.day_id
+  WHERE d.user_id = auth.uid()
+  GROUP BY e.catalog_item_id
+),
+first_pos AS (
+  SELECT e.catalog_item_id AS id, d.date, MIN(e.ordering) AS first_order
+  FROM public.entries e
+  JOIN public.days d ON d.id = e.day_id
+  WHERE d.user_id = auth.uid()
+  GROUP BY e.catalog_item_id, d.date
+)
+SELECT
+  ci.id,
+  ci.name,
+  ci.unit,
+  ci.kcal_per_unit,
+  ci.default_qty,
+  ci.created_at,
+  lu.last_date AS last_used_date,
+  fp.first_order AS first_order_on_last_day
+FROM public.catalog_items ci
+LEFT JOIN last_use lu ON lu.id = ci.id
+LEFT JOIN first_pos fp ON fp.id = ci.id AND fp.date = lu.last_date
+WHERE ci.user_id = auth.uid()
+ORDER BY
+  lu.last_date DESC NULLS LAST,         -- most recent day used first
+  fp.first_order ASC NULLS LAST,        -- earlier first-appearance that day first
+  LOWER(BTRIM(ci.name)) ASC;            -- never-used go last, alphabetical
+$$;
 
 
-ALTER FUNCTION "public"."db_now"() OWNER TO "postgres";
+ALTER FUNCTION "public"."get_catalog_items_usage_order"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_or_create_day"("p_date" "date") RETURNS "uuid"
@@ -199,6 +232,64 @@ $$;
 
 ALTER FUNCTION "public"."move_entry"("p_entry_id" "uuid", "p_dir" "text") OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user uuid := auth.uid();
+  v_expected int;
+  v_seen int;
+  v_id uuid;
+  v_idx int := 0;
+begin
+  if v_user is null then
+    raise exception 'unauthenticated' using errcode = '28000';
+  end if;
+
+  -- Ensure the day belongs to the caller.
+  if not exists (
+    select 1 from public.days d
+    where d.id = p_day_id and d.user_id = v_user
+  ) then
+    raise exception 'forbidden: day not owned by caller' using errcode = '42501';
+  end if;
+
+  -- Lock all rows for that day.
+  perform 1 from public.entries e
+  where e.day_id = p_day_id
+  for update;
+
+  -- Sanity: require the array to include all entry ids for the day.
+  select count(*) into v_expected from public.entries where day_id = p_day_id;
+  select coalesce(array_length(p_ids, 1), 0) into v_seen;
+
+  if v_seen <> v_expected then
+    raise exception 'mismatch: provided % ids but day has %', v_seen, v_expected using errcode = '22023';
+  end if;
+
+  -- Temporary negative to avoid UNIQUE(day_id, ordering) collisions during rewrite.
+  update public.entries
+  set ordering = -ordering - 1
+  where day_id = p_day_id;
+
+  -- Assign 0..N-1 in the given order.
+  v_idx := 0;
+  foreach v_id in array p_ids loop
+    update public.entries
+    set ordering = v_idx
+    where id = v_id and day_id = p_day_id;
+    v_idx := v_idx + 1;
+  end loop;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -211,7 +302,6 @@ CREATE TABLE IF NOT EXISTS "public"."catalog_items" (
     "unit" "text" NOT NULL,
     "kcal_per_unit" numeric(10,4) NOT NULL,
     "default_qty" numeric(10,2) NOT NULL,
-    "is_favorite" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
@@ -371,9 +461,9 @@ GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name
 
 
 
-GRANT ALL ON FUNCTION "public"."db_now"() TO "anon";
-GRANT ALL ON FUNCTION "public"."db_now"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."db_now"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_catalog_items_usage_order"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_catalog_items_usage_order"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_catalog_items_usage_order"() TO "service_role";
 
 
 
@@ -386,6 +476,12 @@ GRANT ALL ON FUNCTION "public"."get_or_create_day"("p_date" "date") TO "service_
 GRANT ALL ON FUNCTION "public"."move_entry"("p_entry_id" "uuid", "p_dir" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."move_entry"("p_entry_id" "uuid", "p_dir" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."move_entry"("p_entry_id" "uuid", "p_dir" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) TO "anon";
+GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) TO "service_role";
 
 
 

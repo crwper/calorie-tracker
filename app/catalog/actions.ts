@@ -24,7 +24,6 @@ export async function createCatalogItemAction(formData: FormData) {
   const unit = String(formData.get('unit') ?? '').trim();
   const kcalPerUnit = okNum(formData.get('kcal_per_unit'));
   const defaultQty = okNum(formData.get('default_qty'));
-  const isFavorite = String(formData.get('is_favorite') ?? '') === 'on';
 
   if (!name || !unit) throw new Error('Name and unit required');
 
@@ -34,7 +33,6 @@ export async function createCatalogItemAction(formData: FormData) {
     unit,
     kcal_per_unit: kcalPerUnit,
     default_qty: defaultQty,
-    is_favorite: isFavorite,
   });
   if (error) throw new Error(error.message);
 
@@ -73,25 +71,6 @@ export async function updateCatalogItemAction(formData: FormData) {
       kcal_per_unit: kcalPerUnit,
       default_qty: defaultQty,
     })
-    .eq('id', id);
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/catalog');
-  revalidatePath('/');
-}
-
-export async function toggleFavoriteCatalogItemAction(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Must be signed in');
-
-  const id = String(formData.get('id') ?? '');
-  const next = String(formData.get('next') ?? '') === 'true';
-  if (!id) throw new Error('Missing id');
-
-  const { error } = await supabase
-    .from('catalog_items')
-    .update({ is_favorite: next })
     .eq('id', id);
 
   if (error) throw new Error(error.message);
