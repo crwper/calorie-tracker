@@ -105,9 +105,6 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
         <div className="rounded-lg border bg-white p-4 space-y-4">
           {/* catalogpage subsection */}
           <div>
-            <div className="mb-2 text-xs font-semibold text-gray-700 uppercase tracking-wide">
-              Catalog
-            </div>
             <CatalogChipPicker
               items={chipItems ?? []}
               selectedYMD={selectedYMD}
@@ -121,44 +118,6 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
                 }}
                 className="underline">Manage catalog →</Link>
             </div>
-          </div>
-
-          <div className="border-t my-2" />
-
-          {/* One-time subsection (manual add) */}
-          <div>
-            <div className="mb-2 text-xs font-semibold text-gray-700 uppercase tracking-wide">
-              One-time
-            </div>
-            <form action={addEntryAction} className="flex flex-wrap gap-2 items-end">
-              <input type="hidden" name="date" value={selectedYMD} />
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600">Name</label>
-                <input name="name" className="border rounded px-2 py-1 text-sm" placeholder="Chicken" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600">Qty</label>
-                <input name="qty" type="number" step="0.01" className="border rounded px-2 py-1 text-sm" placeholder="100" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600">Unit</label>
-                <input name="unit" className="border rounded px-2 py-1 text-sm" placeholder="g" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600">kcal</label>
-                <input name="kcal_snapshot" type="number" step="0.01" className="border rounded px-2 py-1 text-sm" placeholder="165" />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-600">Status</label>
-                <select name="status" className="border rounded px-2 py-1 text-sm">
-                  <option value="planned">planned</option>
-                  <option value="eaten">eaten</option>
-                </select>
-              </div>
-              <button className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50" type="submit">
-                Add entry
-              </button>
-            </form>
           </div>
         </div>
       </section>
