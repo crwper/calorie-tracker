@@ -30,7 +30,7 @@ export default async function CatalogPage({
     .order('name', { ascending: true });
 
   return (
-    <main className="mx-auto max-w-3xl p-6 space-y-6 font-sans bg-slate-50">
+    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Catalog</h1>
         {next && (
