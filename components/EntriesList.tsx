@@ -264,7 +264,7 @@ function SortableEntry({
 
       {/* Content grid: TL name, TR kcal, BL qty, BR saving… */}
       <div className="flex-1">
-        <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
+        <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0">
           {/* Top-left: description */}
           <div className="col-[1/2] row-[1/2]">
             <div className="font-medium">{e.name}</div>
@@ -276,7 +276,7 @@ function SortableEntry({
           </div>
 
           {/* Bottom row container (relative for bottom-right indicator) */}
-          <div className="col-span-2 relative mt-1">
+          <div className="col-span-2 relative mt-0.5">
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 pr-16">
               {/* Bottom-left: Qty — editable when planned; text-only when eaten (form stays mounted) */}
               <AutoSaveQtyForm

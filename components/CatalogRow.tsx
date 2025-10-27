@@ -68,7 +68,7 @@ function ViewRow({
     <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
       <div>
         <div className="font-medium">{item.name}</div>
-        <div className="text-xs text-gray-600">
+        <div className="text-xs text-gray-600 mt-0.5">
           {defaultQty.toString()} {item.unit} · {perUnit} kcal/{item.unit}
           {approxKcal ? <> &nbsp;≈&nbsp;<span className="tabular-nums">{approxKcal}</span> kcal</> : null}
         </div>
