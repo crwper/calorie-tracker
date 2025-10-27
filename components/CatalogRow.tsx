@@ -96,6 +96,19 @@ function ViewRow({
 
 /* ---------- Edit row (grid aligned with "Add item") ---------- */
 
+// Exit edit mode after a successful submit settles
+function PendingWatcher({ onSettled }: { onSettled: () => void }) {
+  const { pending } = useFormStatus();
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      onSettled();
+    }
+    wasPending.current = pending;
+  }, [pending, onSettled]);
+  return null;
+}
+
 function EditRow({
   item,
   updateAction,
@@ -109,33 +122,24 @@ function EditRow({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Exit edit mode after a successful submit settles
-  function PendingWatcher({ onSettled }: { onSettled: () => void }) {
-    const { pending } = useFormStatus();
-    const wasPending = useRef(false);
-    useEffect(() => {
-      if (wasPending.current && !pending) {
-        onSettled();
-      }
-      wasPending.current = pending;
-    }, [pending, onSettled]);
-    return null;
-  }
-
   return (
     <form
       ref={formRef}
       action={updateAction}
-      className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 items-end"
+      className="
+        grid gap-2 items-end
+        grid-cols-2
+        md:grid-cols-[2fr_1fr_1fr_1fr_1fr]
+      "
     >
       <input type="hidden" name="id" value={item.id} />
 
-      <div className="col-span-2">
+      <div className="col-span-2 md:col-span-2 min-w-0">
         <label className="text-xs text-gray-600">Name</label>
         <input
           name="name"
           defaultValue={item.name}
-          className="w-full border rounded px-2 py-1 text-sm"
+          className="w-full min-w-0 border rounded px-2 py-1 text-sm"
         />
       </div>
 
@@ -174,8 +178,8 @@ function EditRow({
         />
       </div>
 
-      {/* Column 6: Save + Cancel + Delete (Delete posts to its own action) */}
-      <div className="flex items-center justify-end gap-1">
+      {/* Row 2: Save + Cancel, full-width so inputs get max room */}
+      <div className="col-span-full flex items-center justify-end gap-1 pt-1">
         <button
           type="submit"
           className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
@@ -195,8 +199,6 @@ function EditRow({
         >
           Cancel
         </button>
-        {/* Inline delete uses the parent form's hidden id input */}
-        <DeleteCatalogItemButton id={item.id} inlineInParentForm />
       </div>
 
       {/* Refresh page data on action settle + leave edit mode */}

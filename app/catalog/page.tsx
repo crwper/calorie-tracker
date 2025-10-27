@@ -62,7 +62,7 @@ export default async function CatalogPage({
             <input name="default_qty" type="number" step="any" min="0" inputMode="decimal"
                    className="w-full border rounded px-2 py-1 text-sm" placeholder="130" />
           </div>
-          <div className="col-span-6 flex gap-2">
+          <div className="col-span-full flex gap-2">
             <button
               type="submit"
               name="intent"
