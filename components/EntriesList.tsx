@@ -232,7 +232,7 @@ function SortableEntry({
     <li
       ref={setNodeRef}
       style={style}
-      className={`p-2 flex items-stretch gap-2 rounded-md}`}
+      className={`p-2 flex items-stretch gap-2 rounded-md`}
     >
       {/* Drag handle: full-height left edge */}
       <div className="shrink-0 self-stretch">
