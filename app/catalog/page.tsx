@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { createCatalogItemAction, updateCatalogItemAction } from './actions';
-import DeleteCatalogItemButton from '@/components/DeleteCatalogItemButton';
+import CatalogRow from '@/components/CatalogRow';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +38,11 @@ export default async function CatalogPage({
         )}
       </div>
 
-      {/* Add item (mirrors "Add to today") */}
+      {/* Add item */}
       <section className="space-y-2">
         <h2 className="font-semibold">Add item</h2>
         <div className="rounded-lg border bg-white p-4">
-          <form action={createCatalogItemAction} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 items-end">
+          <form action={createCatalogItemAction} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-2 items-end">
             {next ? <input type="hidden" name="next" value={next} /> : null}
           <div className="col-span-2">
             <label className="text-xs text-gray-600">Name</label>
@@ -61,13 +61,6 @@ export default async function CatalogPage({
             <label className="text-xs text-gray-600">Default qty</label>
             <input name="default_qty" type="number" step="any" min="0" inputMode="decimal"
                    className="w-full border rounded px-2 py-1 text-sm" placeholder="130" />
-          </div>
-          {/* Reserve the column-6 width so first-row inputs match edit rows */}
-          <div aria-hidden className="flex items-center justify-end gap-1">
-            {/* width match for Save */}
-            <button type="button" className="rounded border px-3 py-1 text-sm invisible">Save</button>
-            {/* width match for Delete icon */}
-            <div className="inline-flex h-7 w-7 items-center justify-center invisible" />
           </div>
           <div className="col-span-6 flex gap-2">
             <button
@@ -94,7 +87,7 @@ export default async function CatalogPage({
         </div>
       </section>
 
-      {/* Your items (mirrors "Entries") */}
+      {/* Your items */}
       <section className="space-y-2">
         <h2 className="font-semibold">Your items</h2>
         <div className="rounded-lg border bg-white p-4">
@@ -105,71 +98,7 @@ export default async function CatalogPage({
           ) : (
             <ul className="divide-y">
               {(items ?? []).map((it) => (
-                <li key={it.id} className="py-2">
-                  {/* Single grid row; last column contains Save + Delete */}
-                  <form
-                    action={updateCatalogItemAction}
-                    className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-2 items-end"
-                  >
-                    <input type="hidden" name="id" value={it.id} />
-
-                    <div className="col-span-2">
-                      <label className="text-xs text-gray-600">Name</label>
-                      <input
-                        name="name"
-                        defaultValue={it.name}
-                        className="w-full border rounded px-2 py-1 text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-gray-600">Unit</label>
-                      <input
-                        name="unit"
-                        defaultValue={it.unit}
-                        className="w-full border rounded px-2 py-1 text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-gray-600">kcal / unit</label>
-                      <input
-                        name="kcal_per_unit"
-                        type="number"
-                        step="any"
-                        min="0"
-                      inputMode="decimal"
-                        defaultValue={String(it.kcal_per_unit)}
-                        className="w-full border rounded px-2 py-1 text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-gray-600">Default qty</label>
-                      <input
-                        name="default_qty"
-                        type="number"
-                        step="any"
-                        min="0"
-                        inputMode="decimal"
-                        defaultValue={String(it.default_qty)}
-                        className="w-full border rounded px-2 py-1 text-sm"
-                      />
-                    </div>
-
-                    {/* Column 6: Save + Delete together (no nested forms) */}
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="submit"
-                        className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
-                        title="Save changes"
-                      >
-                        Save
-                      </button>
-                      <DeleteCatalogItemButton id={it.id} inlineInParentForm />
-                    </div>
-                  </form>
-                </li>
+                <CatalogRow key={it.id} item={it} updateAction={updateCatalogItemAction} />
               ))}
             </ul>
           )}
