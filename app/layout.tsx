@@ -1,9 +1,15 @@
+// app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from 'next/link';
 import "./globals.css";
 import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from './auth-actions';
+
+// NEW
+import { cookies } from 'next/headers';
+import { todayInTZYMD } from '@/lib/dates';
+import AppNav from '@/components/AppNav';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,11 +21,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// NEW: tell mobile browsers to size to device width
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  viewportFit: 'cover', // nice for notch devices
+  viewportFit: 'cover',
 };
 
 export const metadata = {
@@ -30,6 +35,11 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  // NEW: compute "today" in cookie TZ for nav fallback
+  const ck = await cookies();
+  const tz = ck.get('tz')?.value ?? 'America/Vancouver';
+  const todayYMD = todayInTZYMD(tz);
 
   return (
     <html lang="en">
@@ -51,7 +61,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               )}
             </div>
           </div>
+
+          {/* NEW: app-level nav, only when authenticated */}
+          {user ? <AppNav defaultTodayYMD={todayYMD} /> : null}
         </header>
+
         <main>{children}</main>
       </body>
     </html>
