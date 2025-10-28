@@ -339,6 +339,23 @@ CREATE TABLE IF NOT EXISTS "public"."entries" (
 ALTER TABLE "public"."entries" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."weights" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "measured_at" "date" NOT NULL,
+    "method" "text" NOT NULL,
+    "weight_kg" numeric(7,3) NOT NULL,
+    "me_kg" numeric(7,3),
+    "me_and_dog_kg" numeric(7,3),
+    "note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "weights_method_check" CHECK (("method" = ANY (ARRAY['vet'::"text", 'home_diff'::"text"])))
+);
+
+
+ALTER TABLE "public"."weights" OWNER TO "postgres";
+
+
 ALTER TABLE ONLY "public"."catalog_items"
     ADD CONSTRAINT "catalog_items_pkey" PRIMARY KEY ("id");
 
@@ -368,6 +385,10 @@ CREATE UNIQUE INDEX "entries_day_ordering_key" ON "public"."entries" USING "btre
 
 
 CREATE INDEX "entries_dayid_order_idx" ON "public"."entries" USING "btree" ("day_id", "ordering");
+
+
+
+CREATE INDEX "weights_user_measured_at_idx" ON "public"."weights" USING "btree" ("user_id", "measured_at" DESC, "created_at" DESC);
 
 
 
@@ -448,6 +469,25 @@ CREATE POLICY "entries_update_via_day" ON "public"."entries" FOR UPDATE TO "auth
 
 
 
+ALTER TABLE "public"."weights" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "weights_delete_own" ON "public"."weights" FOR DELETE TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "weights_insert_own" ON "public"."weights" FOR INSERT TO "authenticated" WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "weights_select_own" ON "public"."weights" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "weights_update_own" ON "public"."weights" FOR UPDATE TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
 GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
@@ -500,6 +540,12 @@ GRANT ALL ON TABLE "public"."days" TO "service_role";
 GRANT ALL ON TABLE "public"."entries" TO "anon";
 GRANT ALL ON TABLE "public"."entries" TO "authenticated";
 GRANT ALL ON TABLE "public"."entries" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."weights" TO "anon";
+GRANT ALL ON TABLE "public"."weights" TO "authenticated";
+GRANT ALL ON TABLE "public"."weights" TO "service_role";
 
 
 

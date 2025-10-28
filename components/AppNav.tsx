@@ -10,20 +10,16 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
   const pathname = usePathname();
   const search = useSearchParams();
 
-  // 1) If we're on /day/<ymd>, that's the authoritative context.
   const pathYMD = useMemo(() => {
     const m = /^\/day\/(\d{4}-\d{2}-\d{2})$/.exec(pathname);
     return m && isValidYMD(m[1]) ? m[1] : null;
   }, [pathname]);
 
-  // 2) Otherwise, if ?next=/day/<ymd> exists, use that.
   const nextYMD = useMemo(() => {
     const next = search.get('next');
     if (!next) return null;
-
-    // next is a relative path; try strict parse first, then fall back to a simple regex.
     try {
-      const u = new URL(next, 'http://local'); // base is required for relative URLs
+      const u = new URL(next, 'http://local');
       const m = /^\/day\/(\d{4}-\d{2}-\d{2})$/.exec(u.pathname);
       return m && isValidYMD(m[1]) ? m[1] : null;
     } catch {
@@ -32,14 +28,15 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
     }
   }, [search]);
 
-  // 3) Fallback to "today" in the user's cookie TZ (provided by the server).
   const dayRef = pathYMD ?? nextYMD ?? defaultTodayYMD;
 
   const dayHref = `/day/${dayRef}`;
   const catalogHref = `/catalog?next=${encodeURIComponent(dayHref)}`;
+  const weightsHref = `/weights?next=${encodeURIComponent(dayHref)}`;
 
   const isDay = pathname.startsWith('/day/');
   const isCatalog = pathname.startsWith('/catalog');
+  const isWeights = pathname.startsWith('/weights');
 
   const base =
     'rounded px-3 py-1 text-sm border hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300';
@@ -67,6 +64,16 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
               title="Go to Catalog"
             >
               Catalog
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={weightsHref}
+              aria-current={isWeights ? 'page' : undefined}
+              className={`${base} ${isWeights ? active : ''}`}
+              title="Go to Weights"
+            >
+              Weights
             </Link>
           </li>
         </ul>

@@ -1,0 +1,1 @@
+supabase db dump --schema public --file supabase/schema.sql
