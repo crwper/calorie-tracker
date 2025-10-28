@@ -74,7 +74,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   // Ordered by: last used date desc, then first appearance that day asc,
   // then name asc for never-used items.
   const { data: orderedItems } = await supabase.rpc('get_catalog_items_usage_order');
-  const chipItems = (orderedItems ?? []).slice(0, 200); // keep UI responsive
+  const chipItems = orderedItems ?? []; // let the picker limit what it shows
 
   // Totals for the visible day (derived from the current server fetch)
   const totalEaten = entries
@@ -115,6 +115,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
               items={chipItems ?? []}
               selectedYMD={selectedYMD}
               addFromCatalogAction={addEntryFromCatalogAction}
+              visibleLimit={20}
             />
             <div className="mt-2 text-sm text-gray-600">
               <Link

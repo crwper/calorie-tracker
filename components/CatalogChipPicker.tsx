@@ -20,11 +20,13 @@ export default function CatalogChipPicker({
   items,
   selectedYMD,
   addFromCatalogAction,
+  visibleLimit = 20,
 }: {
   items: Item[];
   selectedYMD: string;
-  // Server Action passed from the Server Component
   addFromCatalogAction: (formData: FormData) => Promise<void>;
+  /** How many to show when the search box is empty */
+  visibleLimit?: number;
 }) {
   const [q, setQ] = useState('');
 
@@ -35,6 +37,10 @@ export default function CatalogChipPicker({
       it.name.toLowerCase().includes(s) || it.unit.toLowerCase().includes(s)
     );
   }, [q, items]);
+
+  // Show only the top N (by the server’s ordering) when q is empty.
+  const display = q.trim() ? filtered : filtered.slice(0, visibleLimit);
+  const truncated = !q.trim() && filtered.length > visibleLimit;
 
   return (
     <div>
@@ -61,7 +67,7 @@ export default function CatalogChipPicker({
 
       {/* Chips list (filtered live, keeps original ordering from server) */}
       <div className="flex flex-wrap gap-2">
-        {filtered.map((it) => (
+        {display.map((it) => (
           <form key={it.id} action={addFromCatalogAction}>
             <input type="hidden" name="date" value={selectedYMD} />
             <input type="hidden" name="mult" value="1" />
@@ -83,6 +89,9 @@ export default function CatalogChipPicker({
         ))}
         {filtered.length === 0 && (
           <div className="text-sm text-gray-600">No matches.</div>
+        )}
+        {truncated && (
+          <div className="text-xs text-gray-500">Showing top {visibleLimit}. Type to search all.</div>
         )}
       </div>
     </div>
