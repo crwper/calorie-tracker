@@ -130,7 +130,6 @@ export default async function GoalsPage({
             <ul className="divide-y">
               {rows.map((g, idx) => {
                 const startLabel = formatYMDLong(String(g.start_date));
-                const endLabel = g.end_date ? formatYMDLong(String(g.end_date)) : 'Present';
                 const current = idx === 0 && !g.end_date;
 
                 return (
@@ -138,15 +137,15 @@ export default async function GoalsPage({
                     <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
                       <div>
                         <div className="font-medium">
-                          {startLabel} → {endLabel}
+                          {startLabel}
                           {current ? <span className="ml-2 text-xs rounded border px-1 py-0.5 bg-slate-50">Current</span> : null}
                         </div>
                         <div className="text-xs text-gray-600 mt-0.5">
-                          Target: <span className="font-medium tabular-nums">{g.kcal_target}</span> kcal/day
-                          {g.note ? <> · <span className="italic">{g.note}</span></> : null}
+                          {g.note ? <>{g.note}</> : null}
                         </div>
                       </div>
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-1">
+                        <div className="text-sm font-medium tabular-nums">{g.kcal_target} kcal/day</div>
                         <DeleteGoalButton id={g.id} />
                       </div>
                     </div>
