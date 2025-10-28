@@ -50,10 +50,10 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
     <nav className="border-t bg-white">
       <div className="mx-auto max-w-2xl p-2">
         <ul className="flex items-center gap-2">
-          <li><Link href={dayHref} className={`${base} ${isDay ? active : ''}`} aria-current={isDay ? 'page' : undefined}>Day</Link></li>
           <li><Link href={catalogHref} className={`${base} ${isCatalog ? active : ''}`} aria-current={isCatalog ? 'page' : undefined}>Catalog</Link></li>
-          <li><Link href={weightsHref} className={`${base} ${isWeights ? active : ''}`} aria-current={isWeights ? 'page' : undefined}>Weights</Link></li>
+          <li><Link href={dayHref} className={`${base} ${isDay ? active : ''}`} aria-current={isDay ? 'page' : undefined}>Day</Link></li>
           <li><Link href={goalsHref} className={`${base} ${isGoals ? active : ''}`} aria-current={isGoals ? 'page' : undefined}>Goals</Link></li>
+          <li><Link href={weightsHref} className={`${base} ${isWeights ? active : ''}`} aria-current={isWeights ? 'page' : undefined}>Weights</Link></li>
           <li><Link href={chartsHref} className={`${base} ${isCharts ? active : ''}`} aria-current={isCharts ? 'page' : undefined}>Charts</Link></li>
         </ul>
       </div>
