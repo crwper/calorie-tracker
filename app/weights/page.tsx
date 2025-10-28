@@ -70,11 +70,7 @@ export default async function WeightsPage({
                     <div>
                       <div className="font-medium">{formatYMDLong(String(w.measured_at))}</div>
                       <div className="text-xs text-gray-600 mt-0.5">
-                        {w.method === 'vet' ? 'Vet scale' : 'At home (difference)'}
-                        {w.note ? <> · <span className="italic">{w.note}</span></> : null}
-                        {w.method === 'home_diff' && w.me_kg != null && w.me_and_dog_kg != null ? (
-                          <> · (me {Number(w.me_kg).toFixed(2)} kg, me+dog {Number(w.me_and_dog_kg).toFixed(2)} kg)</>
-                        ) : null}
+                        {w.note ? <>{w.note}</> : null}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
