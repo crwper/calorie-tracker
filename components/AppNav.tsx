@@ -34,11 +34,13 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
   const catalogHref = `/catalog?next=${encodeURIComponent(dayHref)}`;
   const weightsHref = `/weights?next=${encodeURIComponent(dayHref)}`;
   const goalsHref = `/goals?next=${encodeURIComponent(dayHref)}`;
+  const chartsHref = `/charts?next=${encodeURIComponent(dayHref)}`;
 
   const isDay = pathname.startsWith('/day/');
   const isCatalog = pathname.startsWith('/catalog');
   const isWeights = pathname.startsWith('/weights');
   const isGoals = pathname.startsWith('/goals');
+  const isCharts = pathname.startsWith('/charts');
 
   const base =
     'rounded px-3 py-1 text-sm border hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300';
@@ -52,6 +54,7 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
           <li><Link href={catalogHref} className={`${base} ${isCatalog ? active : ''}`} aria-current={isCatalog ? 'page' : undefined}>Catalog</Link></li>
           <li><Link href={weightsHref} className={`${base} ${isWeights ? active : ''}`} aria-current={isWeights ? 'page' : undefined}>Weights</Link></li>
           <li><Link href={goalsHref} className={`${base} ${isGoals ? active : ''}`} aria-current={isGoals ? 'page' : undefined}>Goals</Link></li>
+          <li><Link href={chartsHref} className={`${base} ${isCharts ? active : ''}`} aria-current={isCharts ? 'page' : undefined}>Charts</Link></li>
         </ul>
       </div>
     </nav>
