@@ -84,6 +84,15 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     .filter(e => e.status === 'planned')
     .reduce((sum, e) => sum + e.kcal_snapshot, 0);
 
+  // Active goal for this day (latest start_date <= selectedYMD)
+  const { data: goalRows } = await supabase
+    .from('goals')
+    .select('start_date,kcal_target')
+    .lte('start_date', selectedYMD)
+    .order('start_date', { ascending: false })
+    .limit(1);
+  const activeGoal = (goalRows ?? [])[0] ?? null;
+
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
       {/* Header + date nav */}
@@ -126,14 +135,22 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
           {/* Drag-and-drop list with optimistic updates */}
           <EntriesList entries={entries} selectedYMD={selectedYMD} />
 
-          {/* Totals at the bottom (server-derived) */}
-          {entries.length > 0 && (
-            <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
-              <div><span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal</div>
-              <div><span className="font-medium">Eaten:</span> {totalEaten.toFixed(2)} kcal</div>
-              <div><span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(2)} kcal</div>
-            </div>
-          )}
+          {/* NEW wrapper: only controls spacing between these two lines */}
+          <div className="space-y-1">
+            {entries.length > 0 && (
+              <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
+                <div><span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal</div>
+                <div><span className="font-medium">Eaten:</span> {totalEaten.toFixed(2)} kcal</div>
+                <div><span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(2)} kcal</div>
+              </div>
+            )}
+
+            {activeGoal && entries.length > 0 && (
+              <div className="text-sm flex items-center justify-end leading-tight">
+                Goal:&nbsp;<span className="font-medium tabular-nums">{activeGoal.kcal_target}</span>&nbsp;kcal
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </main>

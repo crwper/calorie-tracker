@@ -33,10 +33,12 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
   const dayHref = `/day/${dayRef}`;
   const catalogHref = `/catalog?next=${encodeURIComponent(dayHref)}`;
   const weightsHref = `/weights?next=${encodeURIComponent(dayHref)}`;
+  const goalsHref = `/goals?next=${encodeURIComponent(dayHref)}`;
 
   const isDay = pathname.startsWith('/day/');
   const isCatalog = pathname.startsWith('/catalog');
   const isWeights = pathname.startsWith('/weights');
+  const isGoals = pathname.startsWith('/goals');
 
   const base =
     'rounded px-3 py-1 text-sm border hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300';
@@ -46,36 +48,10 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
     <nav className="border-t bg-white">
       <div className="mx-auto max-w-2xl p-2">
         <ul className="flex items-center gap-2">
-          <li>
-            <Link
-              href={dayHref}
-              aria-current={isDay ? 'page' : undefined}
-              className={`${base} ${isDay ? active : ''}`}
-              title="Go to Day"
-            >
-              Day
-            </Link>
-          </li>
-          <li>
-            <Link
-              href={catalogHref}
-              aria-current={isCatalog ? 'page' : undefined}
-              className={`${base} ${isCatalog ? active : ''}`}
-              title="Go to Catalog"
-            >
-              Catalog
-            </Link>
-          </li>
-          <li>
-            <Link
-              href={weightsHref}
-              aria-current={isWeights ? 'page' : undefined}
-              className={`${base} ${isWeights ? active : ''}`}
-              title="Go to Weights"
-            >
-              Weights
-            </Link>
-          </li>
+          <li><Link href={dayHref} className={`${base} ${isDay ? active : ''}`} aria-current={isDay ? 'page' : undefined}>Day</Link></li>
+          <li><Link href={catalogHref} className={`${base} ${isCatalog ? active : ''}`} aria-current={isCatalog ? 'page' : undefined}>Catalog</Link></li>
+          <li><Link href={weightsHref} className={`${base} ${isWeights ? active : ''}`} aria-current={isWeights ? 'page' : undefined}>Weights</Link></li>
+          <li><Link href={goalsHref} className={`${base} ${isGoals ? active : ''}`} aria-current={isGoals ? 'page' : undefined}>Goals</Link></li>
         </ul>
       </div>
     </nav>

@@ -339,6 +339,20 @@ CREATE TABLE IF NOT EXISTS "public"."entries" (
 ALTER TABLE "public"."entries" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."goals" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "start_date" "date" NOT NULL,
+    "kcal_target" integer NOT NULL,
+    "note" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "goals_kcal_check" CHECK ((("kcal_target" >= 200) AND ("kcal_target" <= 5000)))
+);
+
+
+ALTER TABLE "public"."goals" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."weights" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid" NOT NULL,
@@ -385,6 +399,14 @@ CREATE UNIQUE INDEX "entries_day_ordering_key" ON "public"."entries" USING "btre
 
 
 CREATE INDEX "entries_dayid_order_idx" ON "public"."entries" USING "btree" ("day_id", "ordering");
+
+
+
+CREATE UNIQUE INDEX "goals_user_start_date_key" ON "public"."goals" USING "btree" ("user_id", "start_date");
+
+
+
+CREATE INDEX "goals_user_start_idx" ON "public"."goals" USING "btree" ("user_id", "start_date" DESC, "created_at" DESC);
 
 
 
@@ -469,6 +491,25 @@ CREATE POLICY "entries_update_via_day" ON "public"."entries" FOR UPDATE TO "auth
 
 
 
+ALTER TABLE "public"."goals" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "goals_delete_own" ON "public"."goals" FOR DELETE TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "goals_insert_own" ON "public"."goals" FOR INSERT TO "authenticated" WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "goals_select_own" ON "public"."goals" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "goals_update_own" ON "public"."goals" FOR UPDATE TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
 ALTER TABLE "public"."weights" ENABLE ROW LEVEL SECURITY;
 
 
@@ -540,6 +581,12 @@ GRANT ALL ON TABLE "public"."days" TO "service_role";
 GRANT ALL ON TABLE "public"."entries" TO "anon";
 GRANT ALL ON TABLE "public"."entries" TO "authenticated";
 GRANT ALL ON TABLE "public"."entries" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."goals" TO "anon";
+GRANT ALL ON TABLE "public"."goals" TO "authenticated";
+GRANT ALL ON TABLE "public"."goals" TO "service_role";
 
 
 
