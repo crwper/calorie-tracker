@@ -1,7 +1,7 @@
 param(
   [string]$Schema = "public",
   # Relative to the repo root (this script’s folder)
-  [string]$OutFile = "supabase/schema.sql",
+  [string]$OutFile = "../supabase/schema.sql",
   # Optional: override DB URL if you’re not using `supabase link`
   [string]$DbUrl
 )

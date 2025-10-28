@@ -126,6 +126,26 @@ $$;
 ALTER FUNCTION "public"."get_catalog_items_usage_order"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_daily_kcal_totals"() RETURNS TABLE("date" "date", "planned_kcal" numeric, "eaten_kcal" numeric, "total_kcal" numeric)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+select
+  d.date,
+  coalesce(sum(case when e.status = 'planned' then e.kcal_snapshot end), 0)::numeric as planned_kcal,
+  coalesce(sum(case when e.status = 'eaten'   then e.kcal_snapshot end), 0)::numeric as eaten_kcal,
+  coalesce(sum(e.kcal_snapshot), 0)::numeric                                  as total_kcal
+from public.days d
+left join public.entries e on e.day_id = d.id
+where d.user_id = auth.uid()
+group by d.date
+order by d.date;
+$$;
+
+
+ALTER FUNCTION "public"."get_daily_kcal_totals"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_or_create_day"("p_date" "date") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -545,6 +565,12 @@ GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name
 GRANT ALL ON FUNCTION "public"."get_catalog_items_usage_order"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_catalog_items_usage_order"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_catalog_items_usage_order"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_daily_kcal_totals"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_daily_kcal_totals"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_daily_kcal_totals"() TO "service_role";
 
 
 
