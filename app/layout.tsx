@@ -27,7 +27,7 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Dog Tracker',
   manifest: "/manifest.webmanifest",
 };
@@ -42,7 +42,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const todayYMD = todayInTZYMD(tz);
 
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <header className="border-b bg-white">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">

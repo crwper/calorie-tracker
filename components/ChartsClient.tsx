@@ -12,6 +12,9 @@ import { useMemo } from 'react';
 type WeightPoint = { t: number; y: number; goal: number | null; ymd: string };
 type DailyPoint  = { t: number; total: number; goal: number | null; ymd: string };
 
+// helpers near top of component file
+const toNum = (v: unknown): number => (typeof v === 'number' ? v : Number(v));
+
 export default function ChartsClient({
   weights,
   daily,
@@ -92,14 +95,14 @@ export default function ChartsClient({
                 unit=" kg"
               />
               <Tooltip
-                formatter={(val: any, name: string) => {
-                  if (name === 'y') return [`${Number(val).toFixed(2)} kg`, 'Weight'];
-                  return [val, name];
+                formatter={(val: unknown, name: string) => {
+                  if (name === 'y') return [`${toNum(val).toFixed(2)} kg`, 'Weight'];
+                  return [String(val), name];
                 }}
-                labelFormatter={(label: any) => fmtDate(Number(label))}
+                labelFormatter={(label: unknown) => fmtDate(toNum(label))}
               />
               <Legend />
-              {weightDatasets.map((ds, i) => (
+              {weightDatasets.map((ds) => (
                 <Scatter
                   key={ds.label}
                   name={ds.label}
@@ -135,12 +138,13 @@ export default function ChartsClient({
                 unit=" kcal"
               />
               <Tooltip
-                formatter={(val: any, name: string) => {
-                  if (name === 'total') return [`${Number(val).toFixed(0)} kcal`, 'Total'];
-                  if (name === 'goal')  return [`${Number(val).toFixed(0)} kcal`, 'Goal'];
-                  return [val, name];
+                formatter={(val: unknown, name: string) => {
+                  const n = toNum(val);
+                  if (name === 'total') return [`${n.toFixed(0)} kcal`, 'Total'];
+                  if (name === 'goal')  return [`${n.toFixed(0)} kcal`, 'Goal'];
+                  return [String(val), name];
                 }}
-                labelFormatter={(label: any) => fmtDate(Number(label))}
+                labelFormatter={(label: unknown) => fmtDate(toNum(label))}
               />
               <Legend />
               {/* Points only for Total (stroke="none" shows dots only) */}

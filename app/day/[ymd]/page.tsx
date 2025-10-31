@@ -9,13 +9,7 @@ import {
   addDaysYMD,
   formatYMDLong, // timezone-invariant long label for a YYYY-MM-DD
 } from '@/lib/dates';
-import {
-  addEntryAction,
-  toggleEntryStatusAction,
-  addEntryFromCatalogAction,
-  updateEntryQtyAction,
-} from '@/app/actions';
-import DeleteEntryButton from '@/components/DeleteEntryButton';
+import { addEntryFromCatalogAction } from '@/app/actions';
 import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
 

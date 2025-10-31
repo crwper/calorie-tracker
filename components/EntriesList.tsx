@@ -8,6 +8,7 @@ import {
   useTransition,
   forwardRef,
   useImperativeHandle,
+  useCallback
 } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -343,32 +344,40 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
     return () => onPendingChange(false);
   }, [onPendingChange]);
 
-  function parseQty(v: string): number | null {
+  // make it stable
+  const parseQty = useCallback((v: string): number | null => {
     const n = parseFloat(v);
-    if (!Number.isFinite(n) || n <= 0) return null;
-    return n;
-  }
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, []);
 
-  function commit(next: number, mode: 'debounced' | 'immediate') {
-    onQtyOptimistic(next); // update kcal immediately
-    const form = formRef.current;
-    if (!form) return;
-    const input = form.elements.namedItem('qty') as HTMLInputElement | null;
-    if (input) input.value = String(next);
-    if (mode === 'immediate') {
-      form.requestSubmit();
-    } else {
-      debouncedSubmit(form);
-    }
-  }
+  // make it stable
+  const commit = useCallback(
+    (next: number, mode: 'debounced' | 'immediate') => {
+      onQtyOptimistic(next); // optimistic kcal update
+      const form = formRef.current;
+      if (!form) return;
+      const input = form.elements.namedItem('qty') as HTMLInputElement | null;
+      if (input) input.value = String(next);
+      if (mode === 'immediate') {
+        form.requestSubmit();
+      } else {
+        debouncedSubmit(form);
+      }
+    },
+    [onQtyOptimistic, debouncedSubmit]
+  );
 
   // Expose "commitNow" so parent can flush before toggling to eaten
-  useImperativeHandle(ref, () => ({
-    commitNow: () => {
-      const n = parseQty(val);
-      if (n != null) commit(n, 'immediate');
-    },
-  }), [val]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      commitNow: () => {
+        const n = parseQty(val);
+        if (n != null) commit(n, 'immediate');
+      },
+    }),
+    [val, parseQty, commit] // ✅ satisfy exhaustive-deps
+  );
 
   return (
     <form
