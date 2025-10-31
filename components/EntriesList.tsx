@@ -240,7 +240,6 @@ function SortableEntry({
         <button
           type="button"
           aria-label="Drag to reorder"
-          role="button"
           className="h-full w-4 md:w-[18px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none bg-transparent disabled:opacity-60 outline-none focus:outline-none"
           {...(mounted ? attributes : {})}
           {...(mounted ? listeners : {})}

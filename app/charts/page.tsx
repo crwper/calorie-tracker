@@ -1,4 +1,3 @@
-// app/charts/page.tsx
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import ChartsClient from '@/components/ChartsClient';
@@ -10,9 +9,15 @@ function toUTCms(ymd: string): number {
   return Date.UTC(y, m - 1, d);
 }
 
-type WeightRow = { measured_at: string; weight_kg: number };
-type GoalRow = { start_date: string; kcal_target: number };
-type DailyRow = { date: string; planned_kcal: number; eaten_kcal: number; total_kcal: number };
+// NOTE: numeric columns come back as string; accept string | number and cast later.
+type WeightRow = { measured_at: string; weight_kg: string | number };
+type GoalRow   = { start_date: string; kcal_target: number };
+type DailyRow  = {
+  date: string;
+  planned_kcal: string | number;
+  eaten_kcal: string | number;
+  total_kcal: string | number;
+};
 
 export default async function ChartsPage() {
   const supabase = await createClient();
@@ -21,15 +26,28 @@ export default async function ChartsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?next=/charts');
 
-  // Load data
+  // Build queries with proper result typing
+  const weightsQ = supabase
+    .from('weights')
+    .select('measured_at,weight_kg')
+    .order('measured_at', { ascending: true })
+    .returns<WeightRow[]>();
+
+  const goalsQ = supabase
+    .from('goals')
+    .select('start_date,kcal_target')
+    .order('start_date', { ascending: true })
+    .returns<GoalRow[]>();
+
+  const dailyQ = supabase
+    .rpc('get_daily_kcal_totals')
+    .returns<DailyRow[]>();
+
+  // Promise.all wants real Promises in some TS setups; .then(r => r) makes it explicit
   const [{ data: weights }, { data: goals }, { data: daily }] = await Promise.all([
-    supabase.from('weights')
-      .select('measured_at,weight_kg')
-      .order('measured_at', { ascending: true }) as Promise<{ data: WeightRow[] | null }>,
-    supabase.from('goals')
-      .select('start_date,kcal_target')
-      .order('start_date', { ascending: true }) as Promise<{ data: GoalRow[] | null }>,
-    supabase.rpc('get_daily_kcal_totals') as Promise<{ data: DailyRow[] | null }>,
+    weightsQ.then(r => r),
+    goalsQ.then(r => r),
+    dailyQ.then(r => r),
   ]);
 
   const goalsAsc = (goals ?? []).map(g => ({
@@ -38,7 +56,6 @@ export default async function ChartsPage() {
     t: toUTCms(g.start_date),
   }));
 
-  // Helper: active goal for a given YYYY-MM-DD (or null if none yet)
   function activeGoal(ymd: string): number | null {
     if (!goalsAsc.length) return null;
     let lo = 0, hi = goalsAsc.length - 1, ans: number | null = null;
@@ -55,30 +72,27 @@ export default async function ChartsPage() {
     return ans;
   }
 
-  // Weights annotated with goal at measurement time
   const weightsWithGoal = (weights ?? []).map(w => ({
     t: toUTCms(w.measured_at),
-    y: Number(w.weight_kg),
-    goal: activeGoal(w.measured_at) as number | null,
+    y: Number(w.weight_kg), // handles string|number
+    goal: activeGoal(w.measured_at),
     ymd: w.measured_at,
   }));
 
-  // Daily totals (we’ll plot "total" as your spec says) + goal line
-  const dailyWithGoal = (daily ?? []).map(d => ({
+  // after you’ve loaded the data:
+  const dailyArray: DailyRow[] = Array.isArray(daily) ? daily : [];
+
+  const dailyWithGoal = dailyArray.map(d => ({
     t: toUTCms(d.date),
     total: Number(d.total_kcal),
-    goal: activeGoal(d.date) as number | null,
+    goal: activeGoal(d.date),
     ymd: d.date,
   }));
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
       <h1 className="text-2xl font-bold">Charts</h1>
-
-      <ChartsClient
-        weights={weightsWithGoal}
-        daily={dailyWithGoal}
-      />
+      <ChartsClient weights={weightsWithGoal} daily={dailyWithGoal} />
     </main>
   );
 }
