@@ -1,6 +1,6 @@
 {
-  "name": "Dog Tracker",
-  "short_name": "Dog Tracker",
+  "name": "Calorie Tracker",
+  "short_name": "Calorie Tracker",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
