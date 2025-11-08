@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Dog Tracker',
+  title: 'Calorie Tracker',
   manifest: "/manifest.webmanifest",
 };
 
@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="border-b bg-white">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
-            <Link href="/" className="font-semibold">Dog Tracker</Link>
+            <Link href="/" className="font-semibold">Calorie Tracker</Link>
             <div className="text-sm">
               {user ? (
                 <form action={logoutAction} className="flex items-center gap-3">
