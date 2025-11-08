@@ -1,29 +1,29 @@
 // components/primitives/ListRow.tsx
-import * as React from 'react';
+'use client';
 
-export default function ListRow({
-  handle,
-  content,
-  actions,
-  className = '',
-}: {
+import React, { forwardRef } from 'react';
+
+type ListRowProps = {
   handle?: React.ReactNode;
   content: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
-}) {
-  return (
-    <li className={`p-2 flex items-stretch gap-2 ${className}`}>
-      {/* Left: drag handle or spacer */}
-      <div className="shrink-0 self-stretch">{handle}</div>
+  style?: React.CSSProperties;
+};
 
-      {/* Middle: main content */}
-      <div className="flex-1">{content}</div>
+const ListRow = forwardRef<HTMLLIElement, ListRowProps>(
+  ({ handle, content, actions, className = '', style }, ref) => {
+    return (
+      <li ref={ref} style={style} className={`p-2 flex items-stretch gap-2 ${className}`}>
+        <div className="shrink-0 self-stretch">{handle}</div>
+        <div className="flex-1">{content}</div>
+        <div className="shrink-0 self-stretch flex items-center justify-center w-7">
+          {actions}
+        </div>
+      </li>
+    );
+  }
+);
 
-      {/* Right: actions (icon button area) */}
-      <div className="shrink-0 self-stretch flex items-center justify-center w-7">
-        {actions}
-      </div>
-    </li>
-  );
-}
+ListRow.displayName = 'ListRow';
+export default ListRow;

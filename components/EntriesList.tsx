@@ -35,6 +35,9 @@ import {
 } from '@/app/actions';
 import DeleteButton from '@/components/primitives/DeleteButton';
 import { deleteEntryAction } from '@/app/actions';
+import DataList from '@/components/primitives/DataList';
+import ListRow from '@/components/primitives/ListRow';
+import Grip from '@/components/icons/Grip';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { useFormStatus } from 'react-dom';
 
@@ -169,9 +172,9 @@ export default function EntriesList({
 
   if (items.length === 0) {
     return (
-      <ul className="divide-y">
+      <DataList>
         <li className="py-2 text-sm text-gray-600">No entries yet.</li>
-      </ul>
+      </DataList>
     );
   }
 
@@ -180,7 +183,7 @@ export default function EntriesList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={items.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-        <ul className="divide-y">
+        <DataList>
           {items.map((e) => (
             <SortableEntry
               key={e.id}
@@ -191,7 +194,7 @@ export default function EntriesList({
               onStatusOptimistic={applyStatusOptimistic}
             />
           ))}
-        </ul>
+        </DataList>
       </SortableContext>
     </DndContext>
   );
@@ -222,22 +225,17 @@ function SortableEntry({
     opacity: isDragging ? 0.6 : 1,
   };
 
-  // Row-level pending from qty + checkbox (stable across optimistic UI)
   const [qtyPending, setQtyPending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
   const showSaving = useStickyBoolean(qtyPending || statusPending, 250);
 
-  // Expose an imperative "commitNow" on qty form so we can flush before toggle->eaten
   const qtyRef = useRef<AutoSaveQtyFormHandle | null>(null);
 
   return (
-    <li
+    <ListRow
       ref={setNodeRef}
       style={style}
-      className={`p-2 flex items-stretch gap-2`}
-    >
-      {/* Drag handle: full-height left edge */}
-      <div className="shrink-0 self-stretch">
+      handle={
         <button
           type="button"
           aria-label="Drag to reorder"
@@ -247,39 +245,36 @@ function SortableEntry({
           suppressHydrationWarning
           disabled={disabled}
         >
-          <span aria-hidden="true" className="text-gray-400">≡</span>
+          <Grip />
         </button>
-      </div>
+      }
+      content={
+        <div className="grid grid-cols-[22px_1fr_auto] gap-x-2 gap-y-0">
+          {/* Col 1: checkbox spans both rows */}
+          <div className="col-[1/2] row-span-2 flex items-center justify-center">
+            <CheckboxStatusForm
+              entryId={e.id}
+              currentStatus={e.status}
+              selectedYMD={selectedYMD}
+              onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
+              onPendingChange={setStatusPending}
+              onPreSubmit={() => qtyRef.current?.commitNow()}
+            />
+          </div>
 
-      {/* Checkbox column (centered vertically, toned down styling) */}
-      <div className="shrink-0 w-8 flex items-center justify-center">
-        <CheckboxStatusForm
-          entryId={e.id}
-          currentStatus={e.status}
-          selectedYMD={selectedYMD}
-          onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
-          onPendingChange={setStatusPending}
-          onPreSubmit={() => qtyRef.current?.commitNow()}
-        />
-      </div>
-
-      {/* Content grid: TL name, TR kcal, BL qty, BR saving… */}
-      <div className="flex-1">
-        <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-0">
-          {/* Top-left: description */}
-          <div className="col-[1/2] row-[1/2]">
+          {/* Row 1 / Col 2: name */}
+          <div className="col-[2/3] row-[1/2]">
             <div className="font-medium">{e.name}</div>
           </div>
 
-          {/* Top-right: kcal */}
-          <div className="col-[2/3] row-[1/2] flex items-center justify-end">
+          {/* Row 1 / Col 3: kcal */}
+          <div className="col-[3/4] row-[1/2] flex items-center justify-end">
             <div className="text-sm">{Number(e.kcal_snapshot).toFixed(2)} kcal</div>
           </div>
 
-          {/* Bottom row container (relative for bottom-right indicator) */}
-          <div className="col-span-2 relative mt-0.5">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 pr-16">
-              {/* Bottom-left: Qty — editable when planned; text-only when eaten (form stays mounted) */}
+          {/* Row 2 / Col 2: qty editor */}
+          <div className="col-[2/3] row-[2/3] mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
               <AutoSaveQtyForm
                 ref={qtyRef}
                 entryId={e.id}
@@ -291,23 +286,21 @@ function SortableEntry({
                 readOnly={e.status === 'eaten'}
               />
             </div>
+          </div>
 
-            {/* Bottom-right: row-level Saving… indicator (covers qty or status) */}
-            {showSaving && (
-              <span
-                className="absolute right-0 bottom-0 text-[11px] text-gray-500"
-                aria-live="polite"
-                aria-atomic="true"
-              >
-                Saving…
-              </span>
-            )}
+          {/* Row 2 / Col 3: Saving… indicator (space is reserved even when hidden) */}
+          <div className="col-[3/4] row-[2/3] mt-0.5 flex items-center justify-end">
+            <span
+              className={`text-[11px] text-gray-500 whitespace-nowrap ${showSaving ? '' : 'invisible'}`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              Saving…
+            </span>
           </div>
         </div>
-      </div>
-
-      {/* Right column: delete icon centered vertically */}
-      <div className="shrink-0 self-stretch flex items-center justify-center w-7">
+      }
+      actions={
         <DeleteButton
           formAction={deleteEntryAction}
           hidden={{ entry_id: e.id, date: selectedYMD }}
@@ -316,8 +309,8 @@ function SortableEntry({
           confirmMessage="Delete this entry?"
           withRefresh={250}
         />
-      </div>
-    </li>
+      }
+    />
   );
 }
 

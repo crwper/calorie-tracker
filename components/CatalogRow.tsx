@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
+import ListRow from '@/components/primitives/ListRow';
 import DeleteButton from '@/components/primitives/DeleteButton';
 import { deleteCatalogItemAction } from '@/app/catalog/actions';
 import { useFormStatus } from 'react-dom';
@@ -31,23 +32,25 @@ export default function CatalogRow({
     ? (defaultQty * perUnit).toFixed(2)
     : '';
 
-  return (
-    <li className="py-2">
-      {editing ? (
+  if (editing) {
+    return (
+      <li className="py-2">
         <EditRow
           item={item}
           updateAction={updateAction}
           onDone={() => setEditing(false)}
           onCancel={() => setEditing(false)}
         />
-      ) : (
-        <ViewRow
-          item={item}
-          approxKcal={approxKcal}
-          onEdit={() => setEditing(true)}
-        />
-      )}
-    </li>
+      </li>
+    );
+  }
+
+  return (
+    <ViewRow
+      item={item}
+      approxKcal={approxKcal}
+      onEdit={() => setEditing(true)}
+    />
   );
 }
 
@@ -66,39 +69,49 @@ function ViewRow({
   const perUnit = Number(item.kcal_per_unit ?? 0);
 
   return (
-    <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
-      <div>
-        <div className="font-medium">{item.name}</div>
-        <div className="text-xs text-gray-600 mt-0.5">
-          {defaultQty.toString()} {item.unit} · {perUnit} kcal/{item.unit}
-          {approxKcal ? <> &nbsp;≈&nbsp;<span className="tabular-nums">{approxKcal}</span> kcal</> : null}
+    <ListRow
+      handle={null}
+      content={
+        <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
+          <div>
+            <div className="font-medium">{item.name}</div>
+            <div className="text-xs text-gray-600 mt-0.5">
+              {defaultQty.toString()} {item.unit} · {perUnit} kcal/{item.unit}
+              {approxKcal ? <> &nbsp;≈&nbsp;<span className="tabular-nums">{approxKcal}</span> kcal</> : null}
+            </div>
+          </div>
+          <div className="flex items-center justify-end">
+            <div className="text-sm font-medium tabular-nums">
+              {/* optional: right-side emphasis; keep or remove as you prefer */}
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label="Edit item"
-          title="Edit item"
-          className="inline-flex h-7 w-7 items-center justify-center hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded"
-        >
-          {/* pencil icon */}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-          </svg>
-        </button>
-        {/* Delete lives outside a form in view mode */}
-        <DeleteButton
-          formAction={deleteCatalogItemAction}
-          hidden={{ id: item.id }}
-          title="Delete item"
-          aria-label="Delete item"
-          confirmMessage="Delete this catalog item? (Past entries remain unchanged)"
-          withRefresh={250}
-        />
-      </div>
-    </div>
+      }
+      actions={
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Edit item"
+            title="Edit item"
+            className="inline-flex h-7 w-7 items-center justify-center hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            </svg>
+          </button>
+          <DeleteButton
+            formAction={deleteCatalogItemAction}
+            hidden={{ id: item.id }}
+            title="Delete item"
+            aria-label="Delete item"
+            confirmMessage="Delete this catalog item? (Past entries remain unchanged)"
+            withRefresh={250}
+          />
+        </div>
+      }
+    />
   );
 }
 
