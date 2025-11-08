@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { todayInTZYMD, formatYMDLong } from '@/lib/dates';
+import { todayInTZYMD } from '@/lib/dates';
 import WeightAddForm from '@/components/WeightAddForm';
-import DeleteButton from '@/components/primitives/DeleteButton';
-import { deleteWeightAction } from '@/app/weights/actions';
+import DataList from '@/components/primitives/DataList';
+import WeightListRow from '@/components/WeightListRow';
 import { createWeightAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -60,35 +60,15 @@ export default async function WeightsPage({
         <h2 className="font-semibold">Your measurements</h2>
         <div className="rounded-lg border bg-white p-4">
           {!weights || weights.length === 0 ? (
-            <ul className="divide-y">
+            <DataList>
               <li className="py-2 text-sm text-gray-600">No weights yet. Add one above.</li>
-            </ul>
+            </DataList>
           ) : (
-            <ul className="divide-y">
+            <DataList>
               {weights.map((w) => (
-                <li key={w.id} className="py-2">
-                  <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
-                    <div>
-                      <div className="font-medium">{formatYMDLong(String(w.measured_at))}</div>
-                      <div className="text-xs text-gray-600 mt-0.5">
-                        {w.note ? <>{w.note}</> : null}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="text-sm font-medium tabular-nums">{Number(w.weight_kg).toFixed(2)} kg</div>
-                      <DeleteButton
-                        formAction={deleteWeightAction}
-                        hidden={{ id: w.id }}
-                        title="Delete weight entry"
-                        aria-label="Delete weight entry"
-                        confirmMessage="Delete this weight entry?"
-                        withRefresh={250}
-                      />
-                    </div>
-                  </div>
-                </li>
+                <WeightListRow key={w.id} w={w} />
               ))}
-            </ul>
+            </DataList>
           )}
         </div>
       </section>

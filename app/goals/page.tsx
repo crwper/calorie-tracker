@@ -5,8 +5,8 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { todayInTZYMD, addDaysYMD, formatYMDLong } from '@/lib/dates';
 import { createGoalAction } from './actions';
-import DeleteButton from '@/components/primitives/DeleteButton';
-import { deleteGoalAction } from '@/app/goals/actions';
+import DataList from '@/components/primitives/DataList';
+import GoalListRow from '@/components/GoalListRow';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,41 +126,15 @@ export default async function GoalsPage({
         <h2 className="font-semibold">Your goals</h2>
         <div className="rounded-lg border bg-white p-4">
           {(rows ?? []).length === 0 ? (
-            <ul className="divide-y"><li className="py-2 text-sm text-gray-600">No goals yet. Add one above.</li></ul>
+            <DataList>
+              <li className="py-2 text-sm text-gray-600">No goals yet. Add one above.</li>
+            </DataList>
           ) : (
-            <ul className="divide-y">
-              {rows.map((g, idx) => {
-                const startLabel = formatYMDLong(String(g.start_date));
-                const current = idx === 0 && !g.end_date;
-
-                return (
-                  <li key={g.id} className="py-2">
-                    <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
-                      <div>
-                        <div className="font-medium">
-                          {startLabel}
-                          {current ? <span className="ml-2 text-xs rounded border px-1 py-0.5 bg-slate-50">Current</span> : null}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-0.5">
-                          {g.note ? <>{g.note}</> : null}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="text-sm font-medium tabular-nums">{g.kcal_target} kcal/day</div>
-                        <DeleteButton
-                          formAction={deleteGoalAction}
-                          hidden={{ id: g.id }}
-                          title="Delete goal"
-                          aria-label="Delete goal"
-                          confirmMessage="Delete this goal?"
-                          withRefresh={250}
-                        />
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <DataList>
+              {rows.map((g, idx) => (
+                <GoalListRow key={g.id} goal={g} current={idx === 0 && !g.end_date} />
+              ))}
+            </DataList>
           )}
         </div>
       </section>
