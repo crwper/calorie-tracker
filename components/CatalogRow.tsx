@@ -3,7 +3,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
-import DeleteCatalogItemButton from '@/components/DeleteCatalogItemButton';
+import DeleteButton from '@/components/primitives/DeleteButton';
+import { deleteCatalogItemAction } from '@/app/catalog/actions';
 import { useFormStatus } from 'react-dom';
 
 type Item = {
@@ -88,7 +89,14 @@ function ViewRow({
           </svg>
         </button>
         {/* Delete lives outside a form in view mode */}
-        <DeleteCatalogItemButton id={item.id} />
+        <DeleteButton
+          formAction={deleteCatalogItemAction}
+          hidden={{ id: item.id }}
+          title="Delete item"
+          aria-label="Delete item"
+          confirmMessage="Delete this catalog item? (Past entries remain unchanged)"
+          withRefresh={250}
+        />
       </div>
     </div>
   );

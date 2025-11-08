@@ -5,7 +5,8 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { todayInTZYMD, addDaysYMD, formatYMDLong } from '@/lib/dates';
 import { createGoalAction } from './actions';
-import DeleteGoalButton from '@/components/DeleteGoalButton';
+import DeleteButton from '@/components/primitives/DeleteButton';
+import { deleteGoalAction } from '@/app/goals/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,7 +147,14 @@ export default async function GoalsPage({
                       </div>
                       <div className="flex items-center gap-1">
                         <div className="text-sm font-medium tabular-nums">{g.kcal_target} kcal/day</div>
-                        <DeleteGoalButton id={g.id} />
+                        <DeleteButton
+                          formAction={deleteGoalAction}
+                          hidden={{ id: g.id }}
+                          title="Delete goal"
+                          aria-label="Delete goal"
+                          confirmMessage="Delete this goal?"
+                          withRefresh={250}
+                        />
                       </div>
                     </div>
                   </li>

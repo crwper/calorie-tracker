@@ -5,7 +5,8 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { todayInTZYMD, formatYMDLong } from '@/lib/dates';
 import WeightAddForm from '@/components/WeightAddForm';
-import DeleteWeightButton from '@/components/DeleteWeightButton';
+import DeleteButton from '@/components/primitives/DeleteButton';
+import { deleteWeightAction } from '@/app/weights/actions';
 import { createWeightAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -75,7 +76,14 @@ export default async function WeightsPage({
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="text-sm font-medium tabular-nums">{Number(w.weight_kg).toFixed(2)} kg</div>
-                      <DeleteWeightButton id={w.id} />
+                      <DeleteButton
+                        formAction={deleteWeightAction}
+                        hidden={{ id: w.id }}
+                        title="Delete weight entry"
+                        aria-label="Delete weight entry"
+                        confirmMessage="Delete this weight entry?"
+                        withRefresh={250}
+                      />
                     </div>
                   </div>
                 </li>

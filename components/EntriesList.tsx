@@ -33,7 +33,8 @@ import {
   updateEntryQtyAction,
   toggleEntryStatusAction,
 } from '@/app/actions';
-import DeleteEntryButton from '@/components/DeleteEntryButton';
+import DeleteButton from '@/components/primitives/DeleteButton';
+import { deleteEntryAction } from '@/app/actions';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { useFormStatus } from 'react-dom';
 
@@ -307,7 +308,14 @@ function SortableEntry({
 
       {/* Right column: delete icon centered vertically */}
       <div className="shrink-0 self-stretch flex items-center justify-center w-7">
-        <DeleteEntryButton entryId={e.id} date={selectedYMD} />
+        <DeleteButton
+          formAction={deleteEntryAction}
+          hidden={{ entry_id: e.id, date: selectedYMD }}
+          title="Delete entry"
+          aria-label="Delete entry"
+          confirmMessage="Delete this entry?"
+          withRefresh={250}
+        />
       </div>
     </li>
   );
