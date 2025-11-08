@@ -8,7 +8,8 @@ type HiddenFields = Record<string, string | number | boolean | null | undefined>
 
 export type ConfirmSubmitProps = Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
-  'type' | 'onClick' | 'formAction'
+  // exclude HTML's boolean `hidden` and Next's string `formAction` prop names
+  'type' | 'onClick' | 'formAction' | 'hidden'
 > & {
   /** Next server action to invoke. */
   formAction: (formData: FormData) => Promise<void>;

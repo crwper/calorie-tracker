@@ -12,6 +12,5 @@ export default function DataList({
 }) {
   // Allows <DataList as="div"> if you ever need role="list"
   // while keeping the same default styles.
-  // eslint-disable-next-line react/no-unknown-property
   return <As className={className}>{children}</As>;
 }
