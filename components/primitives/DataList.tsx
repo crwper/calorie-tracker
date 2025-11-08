@@ -1,4 +1,4 @@
-// components/primitives/DataList.tsx
+'use client';
 import * as React from 'react';
 
 export default function DataList({
@@ -6,11 +6,9 @@ export default function DataList({
   className = 'divide-y',
   children,
 }: {
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   className?: string;
   children: React.ReactNode;
 }) {
-  // Allows <DataList as="div"> if you ever need role="list"
-  // while keeping the same default styles.
   return <As className={className}>{children}</As>;
 }
