@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { todayInTZYMD, addDaysYMD, formatYMDLong } from '@/lib/dates';
+import { todayInTZYMD, addDaysYMD } from '@/lib/dates';
 import { createGoalAction } from './actions';
 import GoalAddForm from '@/components/GoalAddForm';
 import DataList from '@/components/primitives/DataList';
