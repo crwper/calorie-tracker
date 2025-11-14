@@ -1,6 +1,6 @@
 {
-  "name": "Calorie Tracker",
-  "short_name": "Calorie Tracker",
+  "name": "Snackdragon",
+  "short_name": "Snackdragon",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
