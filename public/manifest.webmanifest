@@ -1,6 +1,6 @@
 {
-  "name": "Snackdragon",
-  "short_name": "Snackdragon",
+  "name": "Snack Dragon Calorie Counter",
+  "short_name": "Snack Dragon",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

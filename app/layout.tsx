@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Snackdragon',
+  title: 'Snack Dragon Calorie Counter',
   manifest: "/manifest.webmanifest",
 };
 
@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="border-b bg-white">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
-            <Link href="/" className="font-semibold">Snackdragon</Link>
+            <Link href="/" className="font-semibold">Snack Dragon Calorie Counter</Link>
             <div className="text-sm">
               {user ? (
                 <form action={logoutAction} className="flex items-center gap-3">
