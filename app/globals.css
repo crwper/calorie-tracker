@@ -61,51 +61,59 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* existing app-level tokens */
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* App-level */
+    --background: #0a0a0a;   /* body/page background (≈ zinc-950) */
+    --foreground: #e5e5e5;   /* primary text */
 
-    /* For now, keep the same values for app chrome so visuals DO NOT change in dark mode,
-       except for landing CTA where you already had dark-specific values. */
-    --my-color-card: #ffffff;
-    --my-color-header: #ffffff;
-    --my-color-canvas: #f8fafc;
+    /* Surfaces (canvas darkest → card/header lighter) */
+    --my-color-canvas: #0b0b0b;   /* zinc-950-ish */
+    --my-color-header: #18181b;   /* zinc-900 */
+    --my-color-card:   #18181b;   /* zinc-900 */
 
+    /* Neutral controls */
     --my-color-control: transparent;
-    --my-color-control-hover: #f9fafb;
-    --my-color-control-pressed: #f3f4f6;
-    --my-color-input: #d1d5db;
-    --my-color-control-ring: #cbd5e1;
-    --my-color-control-accent: #6b7280;
+    --my-color-control-hover:   #27272a; /* zinc-800 */
+    --my-color-control-pressed: #3f3f46; /* zinc-700 */
+    --my-color-input:           #3f3f46; /* control/border color */
+    --my-color-control-ring:    #71717a; /* focus ring (zinc-500) */
+    --my-color-control-accent:  #a1a1aa; /* checkbox/radio accent (zinc-400) */
 
-    --my-color-chip-face: #f8fafc;
-    --my-color-chip-hover: #f9fafb;
-    --my-color-chip-pressed: #f3f4f6;
-    --my-color-nav-item-hover: #f9fafb;
-    --my-color-nav-item-active: #f3f4f6;
+    /* Chips & nav tabs */
+    --my-color-chip-face:      #18181b; /* zinc-900 */
+    --my-color-chip-hover:     #27272a; /* zinc-800 */
+    --my-color-chip-pressed:   #3f3f46; /* zinc-700 */
+    --my-color-nav-item-hover: #27272a; /* zinc-800 */
+    --my-color-nav-item-active:#3f3f46; /* zinc-700 */
 
-    --my-color-muted-foreground: #4b5563;
-    --my-color-subtle-foreground: #6b7280;
-    --my-color-handle: #9ca3af;
+    /* Text (relative to --foreground) */
+    --my-color-muted-foreground:  #a1a1aa; /* zinc-400 */
+    --my-color-subtle-foreground: #71717a; /* zinc-500 */
+    --my-color-handle:            #52525b; /* zinc-600 (icons/handles) */
 
-    --my-color-button-danger-hover: #fef2f2;
-    --my-color-danger: #fca5a5;
+    /* Destructive actions */
+    --my-color-button-danger-hover: #450a0a; /* red-950 */
+    --my-color-danger:              #ef4444; /* red-500 (visible ring in dark) */
 
-    --my-color-alert-info-surface:  #f8fafc;
-    --my-color-alert-info-border:   #e2e8f0;
-    --my-color-alert-info-fg:       #1e293b;
-    --my-color-alert-success-surface: #f0fdf4;
-    --my-color-alert-success-border:  #bbf7d0;
-    --my-color-alert-success-fg:      #166534;
-    --my-color-alert-warning-surface: #fffbeb;
-    --my-color-alert-warning-border:  #fde68a;
-    --my-color-alert-warning-fg:      #78350f;
-    --my-color-alert-error-surface:   #fef2f2;
-    --my-color-alert-error-border:    #fecaca;
-    --my-color-alert-error-fg:        #991b1b;
+    /* Alerts (tinted, non-glare) */
+    --my-color-alert-info-surface:    #0f172a; /* slate-900  */
+    --my-color-alert-info-border:     #334155; /* slate-700  */
+    --my-color-alert-info-fg:         #e2e8f0; /* slate-200  */
 
-    --my-color-chart-goal-line:     #6b7280;
-    --my-color-chart-no-goal-point: #9ca3af;
+    --my-color-alert-success-surface: #052e16; /* green-950 */
+    --my-color-alert-success-border:  #166534; /* green-800 */
+    --my-color-alert-success-fg:      #bbf7d0; /* green-200 */
+
+    --my-color-alert-warning-surface: #451a03; /* amber-950 */
+    --my-color-alert-warning-border:  #92400e; /* amber-800 */
+    --my-color-alert-warning-fg:      #fde68a; /* amber-200 */
+
+    --my-color-alert-error-surface:   #450a0a; /* red-950  */
+    --my-color-alert-error-border:    #991b1b; /* red-800  */
+    --my-color-alert-error-fg:        #fecaca; /* red-200  */
+
+    /* Charts */
+    --my-color-chart-goal-line:     #94a3b8; /* slate-400 */
+    --my-color-chart-no-goal-point: #a1a1aa; /* zinc-400 */
   }
 }
 
