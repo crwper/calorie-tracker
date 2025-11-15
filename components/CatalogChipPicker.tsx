@@ -75,11 +75,11 @@ export default function CatalogChipPicker({
               type="submit"
               name="catalog_item_id"
               value={it.id}
-              className="border rounded px-2 py-1 text-left text-xs bg-slate-50 hover:bg-gray-50 active:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="border rounded px-2 py-1 text-left text-xs bg-chip-face hover:bg-chip-hover active:bg-chip-pressed focus:outline-none focus:ring-2 focus:ring-control-ring"
               aria-label={`Add ${it.name}`}
             >
               <div className="font-medium">{it.name}</div>
-              <div className="text-[11px] text-gray-600">
+              <div className="text-[11px] text-muted-foreground">
                 {Number(it.default_qty).toString()} {it.unit}
               </div>
             </button>
@@ -88,10 +88,10 @@ export default function CatalogChipPicker({
           </form>
         ))}
         {filtered.length === 0 && (
-          <div className="text-sm text-gray-600">No matches.</div>
+          <div className="text-sm text-muted-foreground">No matches.</div>
         )}
         {truncated && (
-          <div className="text-xs text-gray-500">Showing top {visibleLimit}. Type to search all.</div>
+          <div className="text-xs text-subtle-foreground">Showing top {visibleLimit}. Type to search all.</div>
         )}
       </div>
     </div>

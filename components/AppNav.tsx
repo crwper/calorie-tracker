@@ -43,11 +43,11 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
   const isCharts = pathname.startsWith('/charts');
 
   const base =
-    'rounded px-3 py-1 text-sm border hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300';
-  const active = 'bg-gray-100 font-medium';
+    'rounded px-3 py-1 text-sm border hover:bg-nav-item-hover focus:outline-none focus:ring-2 focus:ring-slate-300';
+  const active = 'bg-nav-item-active font-medium';
 
   return (
-    <nav className="border-t bg-white">
+    <nav className="border-t bg-header">
       <div className="mx-auto max-w-2xl p-2">
         <ul className="flex items-center gap-2">
           <li><Link href={catalogHref} className={`${base} ${isCatalog ? active : ''}`} aria-current={isCatalog ? 'page' : undefined}>Catalog</Link></li>

@@ -3,7 +3,7 @@
 import * as React from 'react';
 
 export default function Grip({
-  className = 'text-gray-400',
+  className = 'text-handle',
   ...rest
 }: React.HTMLAttributes<HTMLSpanElement>) {
   return (

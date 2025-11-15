@@ -88,7 +88,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   const activeGoal = (goalRows ?? [])[0] ?? null;
 
   return (
-    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
+    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
       {/* Header + date nav */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{friendly}</h1>
@@ -102,7 +102,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       {/* Unified "Add to today" section with labeled subsections */}
       <section className="space-y-2">
         <h2 className="font-semibold">Add to today</h2>
-        <div className="rounded-lg border bg-white p-4 space-y-4">
+        <div className="rounded-lg border bg-card p-4 space-y-4">
           {/* catalogpage subsection */}
           <div>
             <CatalogChipPicker
@@ -111,7 +111,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
               addFromCatalogAction={addEntryFromCatalogAction}
               visibleLimit={20}
             />
-            <div className="mt-2 text-sm text-gray-600">
+            <div className="mt-2 text-sm text-muted-foreground">
               <Link
                 href={{
                   pathname: '/catalog',
@@ -126,7 +126,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       {/* Entries with totals at the bottom */}
       <section className="space-y-2">
         <h2 className="font-semibold">Entries</h2>
-        <div className="rounded-lg border bg-white p-4 space-y-3">
+        <div className="rounded-lg border bg-card p-4 space-y-3">
           {/* Drag-and-drop list with optimistic updates */}
           <EntriesList entries={entries} selectedYMD={selectedYMD} />
 

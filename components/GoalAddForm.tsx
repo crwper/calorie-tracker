@@ -13,7 +13,7 @@ export default function GoalAddForm({
   createAction: (formData: FormData) => Promise<void>;
 }) {
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="rounded-lg border bg-card p-4">
       <form
         action={createAction}
         className="grid grid-cols-[2fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr] gap-2 items-end"
@@ -21,7 +21,7 @@ export default function GoalAddForm({
         {next ? <input type="hidden" name="next" value={next} /> : null}
 
         <div>
-          <label className="text-xs text-gray-600">Start date</label>
+          <label className="text-xs text-muted-foreground">Start date</label>
           <input
             name="start_date"
             type="date"
@@ -31,7 +31,7 @@ export default function GoalAddForm({
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">Target (kcal/day)</label>
+          <label className="text-xs text-muted-foreground">Target (kcal/day)</label>
           <input
             name="kcal_target"
             type="number"
@@ -45,7 +45,7 @@ export default function GoalAddForm({
         </div>
 
         <div className="col-span-full">
-          <label className="text-xs text-gray-600">Note (optional)</label>
+          <label className="text-xs text-muted-foreground">Note (optional)</label>
           <input
             name="note"
             className="w-full border rounded px-2 py-1 text-sm"

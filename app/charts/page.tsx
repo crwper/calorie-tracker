@@ -90,7 +90,7 @@ export default async function ChartsPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
+    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
       <h1 className="text-2xl font-bold">Charts</h1>
       <ChartsClient weights={weightsWithGoal} daily={dailyWithGoal} />
     </main>

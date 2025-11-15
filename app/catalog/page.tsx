@@ -31,7 +31,7 @@ export default async function CatalogPage({
     .order('name', { ascending: true });
 
   return (
-    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
+    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Catalog</h1>
         {next && (
@@ -48,10 +48,10 @@ export default async function CatalogPage({
       {/* Your items */}
       <section className="space-y-2">
         <h2 className="font-semibold">Your items</h2>
-        <div className="rounded-lg border bg-white p-4">
+        <div className="rounded-lg border bg-card p-4">
           {(items ?? []).length === 0 ? (
             <ul className="divide-y">
-              <li className="py-2 text-sm text-gray-600">No items yet. Create your first above.</li>
+              <li className="py-2 text-sm text-muted-foreground">No items yet. Create your first above.</li>
             </ul>
           ) : (
             <ul className="divide-y">

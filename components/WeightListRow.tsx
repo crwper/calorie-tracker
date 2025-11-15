@@ -24,7 +24,7 @@ export default function WeightListRow({ w }: { w: Weight }) {
         <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
           <div>
             <div className="font-medium">{label}</div>
-            <div className="text-xs text-gray-600 mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               {w.note ? <>{w.note}</> : null}
             </div>
           </div>

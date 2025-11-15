@@ -173,7 +173,7 @@ export default function EntriesList({
   if (items.length === 0) {
     return (
       <DataList>
-        <li className="py-2 text-sm text-gray-600">No entries yet.</li>
+        <li className="py-2 text-sm text-muted-foreground">No entries yet.</li>
       </DataList>
     );
   }
@@ -274,7 +274,7 @@ function SortableEntry({
 
           {/* Row 2 / Col 2: qty editor */}
           <div className="col-[2/3] row-[2/3] mt-0.5">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <AutoSaveQtyForm
                 ref={qtyRef}
                 entryId={e.id}
@@ -291,7 +291,7 @@ function SortableEntry({
           {/* Row 2 / Col 3: Saving… indicator (space is reserved even when hidden) */}
           <div className="col-[3/4] row-[2/3] mt-0.5 flex items-center justify-end">
             <span
-              className={`text-[11px] text-gray-500 whitespace-nowrap ${showSaving ? '' : 'invisible'}`}
+              className={`text-[11px] text-subtle-foreground whitespace-nowrap ${showSaving ? '' : 'invisible'}`}
               aria-live="polite"
               aria-atomic="true"
             >

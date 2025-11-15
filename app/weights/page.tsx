@@ -39,7 +39,7 @@ export default async function WeightsPage({
   const today = todayInTZYMD(tz);
 
   return (
-    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-slate-50">
+    <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Weights</h1>
         {next && (
@@ -58,10 +58,10 @@ export default async function WeightsPage({
       {/* History */}
       <section className="space-y-2">
         <h2 className="font-semibold">Your measurements</h2>
-        <div className="rounded-lg border bg-white p-4">
+        <div className="rounded-lg border bg-card p-4">
           {!weights || weights.length === 0 ? (
             <DataList>
-              <li className="py-2 text-sm text-gray-600">No weights yet. Add one above.</li>
+              <li className="py-2 text-sm text-muted-foreground">No weights yet. Add one above.</li>
             </DataList>
           ) : (
             <DataList>

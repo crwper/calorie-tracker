@@ -75,7 +75,7 @@ function ViewRow({
         <div className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
           <div>
             <div className="font-medium">{item.name}</div>
-            <div className="text-xs text-gray-600 mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               {defaultQty.toString()} {item.unit} · {perUnit} kcal/{item.unit}
               {approxKcal ? <> &nbsp;≈&nbsp;<span className="tabular-nums">{approxKcal}</span> kcal</> : null}
             </div>
@@ -156,7 +156,7 @@ function EditRow({
       <input type="hidden" name="id" value={item.id} />
 
       <div className="col-span-2 md:col-span-2 min-w-0">
-        <label className="text-xs text-gray-600">Name</label>
+        <label className="text-xs text-muted-foreground">Name</label>
         <input
           name="name"
           defaultValue={item.name}
@@ -165,7 +165,7 @@ function EditRow({
       </div>
 
       <div>
-        <label className="text-xs text-gray-600">Unit</label>
+        <label className="text-xs text-muted-foreground">Unit</label>
         <input
           name="unit"
           defaultValue={item.unit}
@@ -174,7 +174,7 @@ function EditRow({
       </div>
 
       <div>
-        <label className="text-xs text-gray-600">kcal / unit</label>
+        <label className="text-xs text-muted-foreground">kcal / unit</label>
         <input
           name="kcal_per_unit"
           type="number"
@@ -187,7 +187,7 @@ function EditRow({
       </div>
 
       <div>
-        <label className="text-xs text-gray-600">Default qty</label>
+        <label className="text-xs text-muted-foreground">Default qty</label>
         <input
           name="default_qty"
           type="number"

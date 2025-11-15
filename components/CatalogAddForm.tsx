@@ -11,7 +11,7 @@ export default function CatalogAddForm({
   createAction: (formData: FormData) => Promise<void>;
 }) {
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="rounded-lg border bg-card p-4">
       <form
         action={createAction}
         className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-2 items-end"
@@ -19,12 +19,12 @@ export default function CatalogAddForm({
         {next ? <input type="hidden" name="next" value={next} /> : null}
 
         <div className="col-span-2">
-          <label className="text-xs text-gray-600">Name</label>
+          <label className="text-xs text-muted-foreground">Name</label>
           <input name="name" className="w-full border rounded px-2 py-1 text-sm" />
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">Unit</label>
+          <label className="text-xs text-muted-foreground">Unit</label>
           <input
             name="unit"
             className="w-full border rounded px-2 py-1 text-sm"
@@ -33,7 +33,7 @@ export default function CatalogAddForm({
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">kcal / unit</label>
+          <label className="text-xs text-muted-foreground">kcal / unit</label>
           <input
             name="kcal_per_unit"
             type="number"
@@ -46,7 +46,7 @@ export default function CatalogAddForm({
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">Default qty</label>
+          <label className="text-xs text-muted-foreground">Default qty</label>
           <input
             name="default_qty"
             type="number"

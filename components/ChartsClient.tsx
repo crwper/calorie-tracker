@@ -74,7 +74,7 @@ export default function ChartsClient({
   return (
     <div className="space-y-6">
       {/* --- Weight measurements by active goal --- */}
-      <section className="rounded-lg border bg-white p-4">
+      <section className="rounded-lg border bg-card p-4">
         <h2 className="font-semibold mb-2">Weights</h2>
         <div style={{ width: '100%', height: 320 }}>
           <ResponsiveContainer>
@@ -118,7 +118,7 @@ export default function ChartsClient({
       </section>
 
       {/* --- Daily total kcal (points) + dashed goal line --- */}
-      <section className="rounded-lg border bg-white p-4">
+      <section className="rounded-lg border bg-card p-4">
         <h2 className="font-semibold mb-2">Daily calories (Total) vs Goal</h2>
         <div style={{ width: '100%', height: 320 }}>
           <ResponsiveContainer>

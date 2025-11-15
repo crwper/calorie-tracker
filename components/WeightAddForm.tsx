@@ -39,7 +39,7 @@ export default function WeightAddForm({
   }, [method, unit, weight, you, youDog]);
 
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="rounded-lg border bg-card p-4">
       <form
         action={createAction}
         className="grid grid-cols-[1fr_1fr_1fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 items-end"
@@ -47,7 +47,7 @@ export default function WeightAddForm({
         {next ? <input type="hidden" name="next" value={next} /> : null}
 
         <div className="col-span-2">
-          <label className="text-xs text-gray-600">Date</label>
+          <label className="text-xs text-muted-foreground">Date</label>
           <input
             name="date"
             type="date"
@@ -57,7 +57,7 @@ export default function WeightAddForm({
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">Method</label>
+          <label className="text-xs text-muted-foreground">Method</label>
           <select
             name="method"
             value={method}
@@ -70,7 +70,7 @@ export default function WeightAddForm({
         </div>
 
         <div>
-          <label className="text-xs text-gray-600">Units</label>
+          <label className="text-xs text-muted-foreground">Units</label>
           <select
             name="unit"
             value={unit}
@@ -85,7 +85,7 @@ export default function WeightAddForm({
         {/* Method-specific inputs */}
         {method === 'vet' ? (
           <div className="col-span-2">
-            <label className="text-xs text-gray-600">Dog weight</label>
+            <label className="text-xs text-muted-foreground">Dog weight</label>
             <input
               name="weight"
               type="number"
@@ -101,7 +101,7 @@ export default function WeightAddForm({
         ) : (
           <>
             <div>
-              <label className="text-xs text-gray-600">You</label>
+              <label className="text-xs text-muted-foreground">You</label>
               <input
                 name="me"
                 type="number"
@@ -115,7 +115,7 @@ export default function WeightAddForm({
               />
             </div>
             <div>
-              <label className="text-xs text-gray-600">You + dog</label>
+              <label className="text-xs text-muted-foreground">You + dog</label>
               <input
                 name="me_plus_dog"
                 type="number"
@@ -132,7 +132,7 @@ export default function WeightAddForm({
         )}
 
         <div className="col-span-full">
-          <label className="text-xs text-gray-600">Note (optional)</label>
+          <label className="text-xs text-muted-foreground">Note (optional)</label>
           <input
             name="note"
             className="w-full border rounded px-2 py-1 text-sm"
@@ -161,7 +161,7 @@ export default function WeightAddForm({
             </button>
           )}
           {previewKg != null && (
-            <span className="text-xs text-gray-600">
+            <span className="text-xs text-muted-foreground">
               Preview:&nbsp;<span className="font-medium tabular-nums">{previewKg.toFixed(2)} kg</span>
             </span>
           )}
