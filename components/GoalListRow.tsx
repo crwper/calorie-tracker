@@ -32,7 +32,7 @@ export default function GoalListRow({
             <div className="font-medium">
               {startLabel}
               {current ? (
-                <span className="ml-2 text-xs rounded border px-1 py-0.5 bg-control">
+                <span className="ml-2 text-xs rounded border px-1 py-0.5 bg-chip-face">
                   Current
                 </span>
               ) : null}

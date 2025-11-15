@@ -94,7 +94,7 @@ function ViewRow({
             onClick={onEdit}
             aria-label="Edit item"
             title="Edit item"
-            className="inline-flex h-7 w-7 items-center justify-center hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-300 rounded"
+            className="inline-flex h-7 w-7 items-center justify-center hover:bg-control-hover focus:outline-none focus:ring-2 focus:ring-control-ring rounded"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
               <path d="M12 20h9" />

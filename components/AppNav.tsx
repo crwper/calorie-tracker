@@ -43,7 +43,7 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
   const isCharts = pathname.startsWith('/charts');
 
   const base =
-    'rounded px-3 py-1 text-sm border hover:bg-nav-item-hover focus:outline-none focus:ring-2 focus:ring-slate-300';
+    'rounded px-3 py-1 text-sm border hover:bg-nav-item-hover focus:outline-none focus:ring-2 focus:ring-control-ring';
   const active = 'bg-nav-item-active font-medium';
 
   return (

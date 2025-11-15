@@ -481,9 +481,9 @@ function CheckboxStatusForm({
         type="checkbox"
         className="
           h-4 w-4 cursor-pointer
-          border border-gray-300 rounded
-          accent-gray-500
-          outline-none focus:ring-2 focus:ring-gray-300
+          border border-input rounded
+          accent-control-accent
+          outline-none focus:ring-2 focus:ring-control-ring
         "
         aria-label="Eaten"
         title={currentStatus === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}

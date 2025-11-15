@@ -48,7 +48,7 @@ function HiddenInputs({ hidden }: { hidden?: HiddenFields }) {
 
 const baseBtn =
   'inline-flex h-7 w-7 items-center justify-center rounded focus:outline-none ' +
-  'focus:ring-2 focus:ring-slate-300 hover:bg-gray-50';
+  'focus:ring-2 focus:ring-control-ring hover:bg-control-hover';
 
 export default function ConfirmSubmit({
   formAction,
