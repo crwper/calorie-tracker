@@ -58,7 +58,7 @@ export default function CatalogChipPicker({
           <button
             type="button"
             onClick={() => setQ('')}
-            className="rounded border px-2 py-1 text-sm hover:bg-gray-50"
+            className="rounded border px-2 py-1 text-sm hover:bg-control-hover"
           >
             Clear
           </button>

@@ -22,7 +22,7 @@ export default async function SignupPage({
           <label className="text-xs text-muted-foreground">Password</label>
           <input name="password" type="password" required minLength={6} className="border rounded px-2 py-1" />
         </div>
-        <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">Sign up</button>
+        <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-control-hover">Sign up</button>
       </form>
       <p className="text-sm text-muted-foreground">
         Already have an account? <Link className="underline" href="/login">Log in</Link>

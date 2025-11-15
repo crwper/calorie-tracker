@@ -29,7 +29,7 @@ export default async function LoginPage({
           <label className="text-xs text-muted-foreground">Password</label>
           <input name="password" type="password" required className="border rounded px-2 py-1" />
         </div>
-        <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-gray-50">Log in</button>
+        <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-control-hover">Log in</button>
       </form>
       <p className="text-sm text-muted-foreground">
         No account? <Link className="underline" href="/signup">Sign up</Link>

@@ -63,7 +63,7 @@ export default function CatalogAddForm({
             type="submit"
             name="intent"
             value="create"
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+            className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
           >
             Create
           </button>
@@ -72,7 +72,7 @@ export default function CatalogAddForm({
               type="submit"
               name="intent"
               value="create_return"
-              className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+              className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
               title="Create this item and return to the day you came from"
             >
               Create &amp; return

@@ -203,14 +203,14 @@ function EditRow({
       <div className="col-span-full flex items-center justify-end gap-1 pt-1">
         <button
           type="submit"
-          className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+          className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
           title="Save changes"
         >
           Save
         </button>
         <button
           type="button"
-          className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+          className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
           title="Cancel editing"
           onClick={() => {
             // Reset inputs back to defaults and exit edit mode

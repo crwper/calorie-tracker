@@ -93,9 +93,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{friendly}</h1>
         <nav className="flex items-center gap-2 text-sm">
-          <Link href={`/day/${prevYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Previous day">← Prev</Link>
-          <Link href={`/day/${todayYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Jump to today">Today</Link>
-          <Link href={`/day/${nextYMD}`} className="rounded border px-2 py-1 hover:bg-gray-50" title="Next day">Next →</Link>
+          <Link href={`/day/${prevYMD}`} className="rounded border px-2 py-1 hover:bg-control-hover" title="Previous day">← Prev</Link>
+          <Link href={`/day/${todayYMD}`} className="rounded border px-2 py-1 hover:bg-control-hover" title="Jump to today">Today</Link>
+          <Link href={`/day/${nextYMD}`} className="rounded border px-2 py-1 hover:bg-control-hover" title="Next day">Next →</Link>
         </nav>
       </div>
 

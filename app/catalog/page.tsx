@@ -35,7 +35,7 @@ export default async function CatalogPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Catalog</h1>
         {next && (
-          <Link href={next} className="rounded border px-2 py-1 text-sm hover:bg-gray-50">‹ Back to day</Link>
+          <Link href={next} className="rounded border px-2 py-1 text-sm hover:bg-control-hover">‹ Back to day</Link>
         )}
       </div>
 

@@ -51,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user ? (
                 <form action={logoutAction} className="flex items-center gap-3">
                   <span className="text-muted-foreground">Signed in as {user.email}</span>
-                  <button type="submit" className="rounded border px-2 py-1 hover:bg-gray-50">Logout</button>
+                  <button type="submit" className="rounded border px-2 py-1 hover:bg-control-hover">Logout</button>
                 </form>
               ) : (
                 <div className="flex items-center gap-3">

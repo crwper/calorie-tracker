@@ -58,7 +58,7 @@ export default function GoalAddForm({
             type="submit"
             name="intent"
             value="create"
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+            className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
           >
             Save
           </button>
@@ -67,7 +67,7 @@ export default function GoalAddForm({
               type="submit"
               name="intent"
               value="create_return"
-              className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
+              className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
               title="Save and return to the day you came from"
             >
               Save &amp; return
