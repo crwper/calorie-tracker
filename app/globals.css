@@ -57,12 +57,6 @@
   /* Charts */
   --my-color-chart-goal-line:       #6b7280;  /* gray-500 */
   --my-color-chart-no-goal-point:   #9ca3af;  /* gray-400 */
-
-  /* Landing/marketing page (CTA & code bg/border) */
-  --my-color-landing-cta-primary-hover:   #383838;
-  --my-color-landing-cta-secondary-hover: #f2f2f2;
-  --my-color-landing-cta-secondary-border: rgba(0, 0, 0, .08);
-  --my-color-landing-code-bg:              rgba(0, 0, 0, .05);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -112,12 +106,6 @@
 
     --my-color-chart-goal-line:     #6b7280;
     --my-color-chart-no-goal-point: #9ca3af;
-
-    /* Landing: keep your existing dark palette */
-    --my-color-landing-cta-primary-hover:   #ccc;
-    --my-color-landing-cta-secondary-hover: #1a1a1a;
-    --my-color-landing-cta-secondary-border: rgba(255, 255, 255, .145);
-    --my-color-landing-code-bg:              rgba(255, 255, 255, .06);
   }
 }
 
@@ -189,11 +177,6 @@ body {
 
   --color-chart-goal-line: var(--my-color-chart-goal-line);
   --color-chart-no-goal-point: var(--my-color-chart-no-goal-point);
-
-  --color-landing-cta-primary-hover: var(--my-color-landing-cta-primary-hover);
-  --color-landing-cta-secondary-hover: var(--my-color-landing-cta-secondary-hover);
-  --color-landing-cta-secondary-border: var(--my-color-landing-cta-secondary-border);
-  --color-landing-code-bg: var(--my-color-landing-code-bg);
 }
 
 /* Tailwind import must remain last */
