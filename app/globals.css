@@ -57,6 +57,10 @@
   /* Charts */
   --my-color-chart-goal-line:       #6b7280;  /* gray-500 */
   --my-color-chart-no-goal-point:   #9ca3af;  /* gray-400 */
+
+  /* Borders and dividers */
+  --my-color-border:  #e5e7eb; /* gray-200 */
+  --my-color-divider: #e5e7eb;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -114,6 +118,10 @@
     /* Charts */
     --my-color-chart-goal-line:     #94a3b8; /* slate-400 */
     --my-color-chart-no-goal-point: #a1a1aa; /* zinc-400 */
+
+    /* Borders and dividers */
+    --my-color-border:  #1f2937; /* gray-800 */
+    --my-color-divider: #1f2937;
   }
 }
 
@@ -185,7 +193,15 @@ body {
 
   --color-chart-goal-line: var(--my-color-chart-goal-line);
   --color-chart-no-goal-point: var(--my-color-chart-no-goal-point);
+
+  --color-border:  var(--my-color-border);
+  --color-divider: var(--my-color-divider);
 }
 
 /* Tailwind import must remain last */
 @import "tailwindcss";
+
+/* Set default border color using semantic token */
+@layer base {
+  *, ::before, ::after { border-color: var(--color-border); }
+}
