@@ -24,7 +24,7 @@ export default function ChartsClient({
 }) {
   // Stable color per goal value
   const palette = (i: number) => `hsl(${(i * 137.508) % 360} 62% 45%)`;
-  const noGoalColor = '#9ca3af'; // gray-400
+  const noGoalColor = 'var(--color-chart-no-goal-point)'; // semantic token
 
   const weightDatasets = useMemo(() => {
     // group weights by goal
@@ -162,7 +162,7 @@ export default function ChartsClient({
                 name="Goal"
                 type="stepAfter"
                 dataKey="goal"
-                stroke="#6b7280"          // gray-500
+                stroke="var(--color-chart-goal-line)"          // semantic token
                 strokeDasharray="6 4"
                 dot={false}
                 connectNulls
