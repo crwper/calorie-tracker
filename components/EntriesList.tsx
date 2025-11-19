@@ -40,6 +40,7 @@ import ListRow from '@/components/primitives/ListRow';
 import Grip from '@/components/icons/Grip';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { useFormStatus } from 'react-dom';
+import { markLocalWrite } from '@/components/realtime/localWritePulse';
 
 type Entry = {
   id: string;
@@ -124,6 +125,8 @@ export default function EntriesList({
         date: selectedYMD,
         ids: next.map((e) => e.id),
       });
+      // De-dupe echo for this tab
+      markLocalWrite();
       startTransition(() => {
         router.refresh();
       });

@@ -4,6 +4,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
+import { markLocalWrite } from '@/components/realtime/localWritePulse';
 
 /**
  * Watches the nearest <form> in the subtree. When its server action
@@ -24,6 +25,8 @@ export default function RefreshOnActionComplete({ debounceMs = 0 }: { debounceMs
         clearTimeout(timer.current);
         timer.current = null;
       }
+      // Note a local write so the Realtime echo is ignored in this tab.
+      markLocalWrite();
       if (debounceMs > 0) {
         timer.current = window.setTimeout(() => {
           router.refresh();
