@@ -355,6 +355,8 @@ CREATE TABLE IF NOT EXISTS "public"."entries" (
     CONSTRAINT "entries_status_check" CHECK (("status" = ANY (ARRAY['planned'::"text", 'eaten'::"text"])))
 );
 
+ALTER TABLE ONLY "public"."entries" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE "public"."entries" OWNER TO "postgres";
 
