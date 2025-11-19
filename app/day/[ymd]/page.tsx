@@ -13,6 +13,7 @@ import { addEntryFromCatalogAction } from '@/app/actions';
 import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
 import RefreshNowButton from '@/components/dev/RefreshNowButton';
+import DayRealtimeBridge from '@/components/realtime/DayRealtimeBridge';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
@@ -156,6 +157,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       </section>
 
       <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
+
+      {/* Step 3: Realtime (broad, user-scoped) — logs to console */}
+      <DayRealtimeBridge />
     </main>
   );
 }
