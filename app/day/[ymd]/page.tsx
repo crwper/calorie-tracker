@@ -159,7 +159,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
 
       {/* Step 3: Realtime (broad, user-scoped) — logs to console */}
-      <DayRealtimeBridge />
+      <DayRealtimeBridge dayId={day?.id ?? null} selectedYMD={selectedYMD} />
     </main>
   );
 }

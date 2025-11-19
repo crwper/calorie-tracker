@@ -1,53 +1,49 @@
 // components/realtime/DayRealtimeBridge.tsx
 'use client';
-
 import { useEffect } from 'react';
 import { getBrowserClient } from '@/lib/supabase/client';
 
-export default function DayRealtimeBridge() {
+export default function DayRealtimeBridge({
+  dayId,
+  selectedYMD, // reserved for Step 6
+}: {
+  dayId: string | null;
+  selectedYMD: string;
+}) {
   useEffect(() => {
     const supabase = getBrowserClient();
     let mounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const setup = async () => {
+    const run = async () => {
       const { data } = await supabase.auth.getUser();
-      const user = data.user;
-      // If the browser is not authenticated yet, don't subscribe.
-      if (!mounted || !user) {
-        console.warn('[RT] No browser user yet; skipping subscription');
+      if (!mounted || !data.user) return;
+
+      const log = (label: string) => (payload: any) => {
+        const n = payload.new ?? null;
+        const o = payload.old ?? null;
+        console.debug(`[RT][entries:${label}] id=${n?.id ?? o?.id}`, payload);
+      };
+
+      if (!dayId) {
+        console.debug('[RT] No dayId for this date yet; Step 6 will handle bootstrap.');
         return;
       }
 
-      console.debug('[RT] Browser user id:', user.id);
-
-      const log = (label: string) => (payload: any) => {
-        const newRow = payload.new ?? null;
-        const oldRow = payload.old ?? null;
-        const id = (newRow?.id ?? oldRow?.id) as string | undefined;
-        const dayId = (newRow?.day_id ?? oldRow?.day_id) as string | undefined;
-        console.debug(`[RT][entries:${label}] id=${id} day=${dayId}`, payload);
-      };
-
       channel = supabase
-        .channel('rt-entries-broad')
-        // Use explicit event filters (INSERT/UPDATE/DELETE) instead of '*'
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'entries' }, log('INSERT'))
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'entries' }, log('UPDATE'))
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'entries' }, log('DELETE'));
-
-      channel.subscribe((status) => {
-        console.debug('[RT] channel status →', status);
-      });
+        .channel(`rt-entries-day-${dayId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'entries', filter: `day_id=eq.${dayId}` }, log('INSERT'))
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'entries', filter: `day_id=eq.${dayId}` }, log('UPDATE'))
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'entries', filter: `day_id=eq.${dayId}` }, log('DELETE'))
+        .subscribe(s => console.debug('[RT] channel status →', s));
     };
 
-    void setup();
-
+    void run();
     return () => {
       mounted = false;
-      if (channel) supabase.removeChannel(channel);
+      if (channel) getBrowserClient().removeChannel(channel);
     };
-  }, []);
+  }, [dayId, selectedYMD]);
 
   return null;
 }
