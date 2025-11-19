@@ -5,11 +5,12 @@ import Link from 'next/link';
 import "./globals.css";
 import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from './auth-actions';
-
-// NEW
 import { cookies } from 'next/headers';
 import { todayInTZYMD } from '@/lib/dates';
 import AppNav from '@/components/AppNav';
+import ClientAuthSync from '@/components/auth/ClientAuthSync';
+import WhoAmI from '@/components/dev/WhoAmI';
+export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
 
   // NEW: compute "today" in cookie TZ for nav fallback
   const ck = await cookies();
@@ -44,10 +46,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
+        {/* Sync server auth state to the browser (and clear on logout) */}
+        <ClientAuthSync
+          serverUserId={user?.id ?? null}
+          accessToken={session?.access_token ?? null}
+          refreshToken={session?.refresh_token ?? null}
+        />
+
         <header className="border-b bg-header">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
             <Link href="/" className="font-semibold">Snack Dragon Calorie Counter</Link>
             <div className="text-sm">
+              {process.env.NODE_ENV !== 'production' ? (
+                <span className="ml-2">
+                  <WhoAmI />
+                </span>
+              ) : null}
               {user ? (
                 <form action={logoutAction} className="flex items-center gap-3">
                   <span className="text-muted-foreground">Signed in as {user.email}</span>
