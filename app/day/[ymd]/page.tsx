@@ -12,6 +12,7 @@ import {
 import { addEntryFromCatalogAction } from '@/app/actions';
 import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
+import RefreshNowButton from '@/components/dev/RefreshNowButton';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
@@ -27,6 +28,8 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   }
 
   const friendly = formatYMDLong(selectedYMD);
+  
+  const serverRenderAt = new Date().toISOString();
 
   // Auth gate: anonymous → /login?next=/day/<ymd>
   const { data: { user } } = await supabase.auth.getUser();
@@ -96,6 +99,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
           <Link href={`/day/${prevYMD}`} className="rounded border px-2 py-1 hover:bg-control-hover" title="Previous day">← Prev</Link>
           <Link href={`/day/${todayYMD}`} className="rounded border px-2 py-1 hover:bg-control-hover" title="Jump to today">Today</Link>
           <Link href={`/day/${nextYMD}`} className="rounded border px-2 py-1 hover:bg-control-hover" title="Next day">Next →</Link>
+          {process.env.NODE_ENV !== 'production' ? (
+            <RefreshNowButton label="Refresh" />
+          ) : null}
         </nav>
       </div>
 
@@ -148,6 +154,8 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
           </div>
         </div>
       </section>
+
+      <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
     </main>
   );
 }
