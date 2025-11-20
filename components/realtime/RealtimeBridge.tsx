@@ -121,7 +121,9 @@ export default function RealtimeBridge({
         );
       }
 
-      chan = c.subscribe((status) => {
+      type ChannelStatus = 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT';
+
+      chan = c.subscribe((status: ChannelStatus) => {
         if (!mounted) return;
         // eslint-disable-next-line no-console
         console.log('[RT] generic bridge channel status', { channel, table, status });
