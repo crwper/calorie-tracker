@@ -160,15 +160,9 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     p_unit: item.unit,
     p_kcal: kcal,
     p_status: status,
+    p_catalog_item_id: item.id,
   });
   if (insErr) throw new Error(insErr.message);
-
-  // Optional: link the entry back to the catalog item (snapshot is already set)
-  const { error: linkErr } = await supabase
-    .from('entries')
-    .update({ catalog_item_id: item.id }) // RPC now sets per-unit snapshot
-    .eq('id', entryId);
-  if (linkErr) throw new Error(linkErr.message);
 
   revalidatePath(`/day/${dayDate}`);
 }

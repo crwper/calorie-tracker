@@ -27,6 +27,21 @@ CREATE OR REPLACE FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+begin
+  return public.add_entry_with_order(
+    p_day_id, p_name, p_qty, p_unit, p_kcal, p_status, NULL::uuid
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
 declare
   v_user uuid := auth.uid();
   v_owner uuid;
@@ -50,7 +65,7 @@ begin
     raise exception 'invalid qty' using errcode = '22023';
   end if;
 
-  -- Retry a couple of times in case two inserts race the same ordering
+  -- Retry to avoid UNIQUE(day_id, ordering) races
   for i in 1..3 loop
     select coalesce(max(e.ordering), -1) + 1
       into v_next
@@ -61,12 +76,13 @@ begin
       insert into public.entries (
         day_id, name, qty, unit,
         kcal_snapshot, status, ordering,
-        kcal_per_unit_snapshot
-      )
-      values (
+        kcal_per_unit_snapshot,
+        catalog_item_id
+      ) values (
         p_day_id, p_name, p_qty, p_unit,
         p_kcal, p_status, v_next,
-        round((p_kcal / p_qty)::numeric, 4)  -- <-- write the per-unit snapshot
+        round((p_kcal / p_qty)::numeric, 4),
+        p_catalog_item_id
       )
       returning id into v_id;
 
@@ -82,7 +98,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_catalog_items_usage_order"() RETURNS TABLE("id" "uuid", "name" "text", "unit" "text", "kcal_per_unit" numeric, "default_qty" numeric, "created_at" timestamp with time zone, "last_used_date" "date", "first_order_on_last_day" integer)
@@ -561,6 +577,12 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") TO "service_role";
 
 
 
