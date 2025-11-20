@@ -399,6 +399,8 @@ CREATE TABLE IF NOT EXISTS "public"."catalog_items" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
+ALTER TABLE ONLY "public"."catalog_items" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE "public"."catalog_items" OWNER TO "postgres";
 
@@ -445,6 +447,8 @@ CREATE TABLE IF NOT EXISTS "public"."goals" (
     CONSTRAINT "goals_kcal_check" CHECK ((("kcal_target" >= 200) AND ("kcal_target" <= 5000)))
 );
 
+ALTER TABLE ONLY "public"."goals" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE "public"."goals" OWNER TO "postgres";
 
@@ -461,6 +465,8 @@ CREATE TABLE IF NOT EXISTS "public"."weights" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "weights_method_check" CHECK (("method" = ANY (ARRAY['vet'::"text", 'home_diff'::"text"])))
 );
+
+ALTER TABLE ONLY "public"."weights" REPLICA IDENTITY FULL;
 
 
 ALTER TABLE "public"."weights" OWNER TO "postgres";
@@ -483,6 +489,16 @@ ALTER TABLE ONLY "public"."days"
 
 ALTER TABLE ONLY "public"."entries"
     ADD CONSTRAINT "entries_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."goals"
+    ADD CONSTRAINT "goals_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."weights"
+    ADD CONSTRAINT "weights_pkey" PRIMARY KEY ("id");
 
 
 

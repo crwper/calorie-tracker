@@ -8,6 +8,7 @@ import { createGoalAction } from './actions';
 import GoalAddForm from '@/components/GoalAddForm';
 import DataList from '@/components/primitives/DataList';
 import GoalListRow from '@/components/GoalListRow';
+import RealtimeBridge from '@/components/realtime/RealtimeBridge';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,13 @@ export default async function GoalsPage({
           )}
         </div>
       </section>
+
+      {/* Realtime sync for goals */}
+      <RealtimeBridge
+        channel="rt-goals"
+        table="goals"
+        devLabel="Goals"
+      />
     </main>
   );
 }

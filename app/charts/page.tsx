@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import ChartsClient from '@/components/ChartsClient';
+import RealtimeBridge from '@/components/realtime/RealtimeBridge';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +94,26 @@ export default async function ChartsPage() {
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
       <h1 className="text-2xl font-bold">Charts</h1>
       <ChartsClient weights={weightsWithGoal} daily={dailyWithGoal} />
+
+      {/* Realtime sync for data feeding Charts */}
+      <RealtimeBridge
+        channel="rt-charts-entries"
+        table="entries"
+        filter=""              // rely on RLS via days.user_id; no direct user_id column
+        devLabel="Charts: entries"
+      />
+      <RealtimeBridge
+        channel="rt-charts-goals"
+        table="goals"
+        devLabel="Charts: goals"
+        showIndicator={false}  // avoid 3 overlapping pills; entries one is enough
+      />
+      <RealtimeBridge
+        channel="rt-charts-weights"
+        table="weights"
+        devLabel="Charts: weights"
+        showIndicator={false}
+      />
     </main>
   );
 }

@@ -1,0 +1,185 @@
+// components/realtime/RealtimeBridge.tsx
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getBrowserClient } from '@/lib/supabase/client';
+import { shouldIgnoreRealtime } from '@/components/realtime/localWritePulse';
+
+type RtState = 'idle' | 'connecting' | 'live' | 'error';
+type PostgresEvent = 'INSERT' | 'UPDATE' | 'DELETE';
+
+export type RealtimeBridgeProps = {
+  /** Unique channel name within this tab, e.g. "rt-catalog-items" */
+  channel: string;
+  /** Table to subscribe to (in the given schema) */
+  table: string;
+  schema?: string;
+  /**
+   * Optional Postgres filter, e.g. "user_id=eq.<uuid>".
+   * If omitted, we default to "user_id=eq.<current-user>" for tables that have user_id.
+   * Pass "" to explicitly disable any filter (and rely solely on RLS), e.g. for `entries`.
+   */
+  filter?: string;
+  /** Which events to listen for; defaults to INSERT/UPDATE/DELETE. */
+  events?: PostgresEvent[];
+  /** Debounce for router.refresh after an event. */
+  debounceMs?: number;
+  /**
+   * How long after a local write to ignore realtime echoes in THIS tab.
+   * Matches your Day bridge default.
+   */
+  ignoreLocalWritesTTL?: number;
+  /**
+   * Label shown in the little dev indicator, e.g. "Catalog" or "Goals".
+   * Defaults to the table name.
+   */
+  devLabel?: string;
+  /** Disable the dev indicator while still keeping the subscription. */
+  showIndicator?: boolean;
+};
+
+export default function RealtimeBridge({
+  channel,
+  table,
+  schema = 'public',
+  filter,
+  events,
+  debounceMs = 250,
+  ignoreLocalWritesTTL = 400,
+  devLabel,
+  showIndicator = true,
+}: RealtimeBridgeProps) {
+  const router = useRouter();
+  const debounceRef = useRef<number | null>(null);
+  const [rtState, setRtState] = useState<RtState>('idle');
+
+  useEffect(() => {
+    const supabase = getBrowserClient();
+    let mounted = true;
+    setRtState('idle');
+
+    let chan: ReturnType<typeof supabase.channel> | null = null;
+
+    const scheduleRefresh = () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(
+        () => {
+          if (mounted) {
+            // eslint-disable-next-line no-console
+            console.log('[REFRESH] realtime bridge (debounced)', { channel, table });
+            router.refresh();
+          }
+          debounceRef.current = null;
+        },
+        debounceMs
+      );
+    };
+
+    const handleChange = (payload: unknown) => {
+      const ignore =
+        ignoreLocalWritesTTL > 0
+          ? shouldIgnoreRealtime(ignoreLocalWritesTTL)
+          : false;
+
+      // eslint-disable-next-line no-console
+      console.log('[RT] generic bridge event', { channel, table, ignore, payload });
+
+      if (!ignore) scheduleRefresh();
+    };
+
+    const run = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted || !data.user) {
+        // eslint-disable-next-line no-console
+        console.log('[RT] bridge: no authenticated user, skipping', { channel, table });
+        return;
+      }
+
+      const evs: PostgresEvent[] =
+        events && events.length ? events : ['INSERT', 'UPDATE', 'DELETE'];
+
+      // Default to user_id filter for all your user-scoped tables.
+      const defaultFilter = `user_id=eq.${data.user.id}`;
+      const effectiveFilter =
+        filter === undefined ? defaultFilter : filter; // allow "" to mean "no filter"
+
+      setRtState('connecting');
+
+      let c = supabase.channel(channel);
+
+      for (const ev of evs) {
+        c = c.on(
+          'postgres_changes',
+          {
+            event: ev,
+            schema,
+            table,
+            ...(effectiveFilter ? { filter: effectiveFilter } : {}),
+          },
+          handleChange
+        );
+      }
+
+      chan = c.subscribe((status) => {
+        if (!mounted) return;
+        // eslint-disable-next-line no-console
+        console.log('[RT] generic bridge channel status', { channel, table, status });
+
+        if (status === 'SUBSCRIBED') {
+          setRtState('live');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setRtState('error');
+        } else if (status === 'CLOSED') {
+          setRtState('idle');
+        }
+      });
+    };
+
+    void run();
+
+    return () => {
+      mounted = false;
+      if (debounceRef.current) {
+        window.clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      if (chan) supabase.removeChannel(chan);
+    };
+  }, [channel, table, schema, filter, events, debounceMs, ignoreLocalWritesTTL, router]);
+
+  // Dev-only indicator (similar idea to DayRealtimeBridge, but re-usable)
+  if (process.env.NODE_ENV === 'production' || !showIndicator) {
+    return null;
+  }
+
+  let label = rtState;
+  if (rtState === 'connecting') label = 'connecting…';
+  if (rtState === 'live') label = 'live';
+  if (rtState === 'error') label = 'error (retrying)';
+
+  const dotClass =
+    rtState === 'live'
+      ? 'bg-emerald-500'
+      : rtState === 'connecting'
+      ? 'bg-amber-400'
+      : rtState === 'error'
+      ? 'bg-rose-500 animate-pulse'
+      : 'bg-zinc-400';
+
+  const name = devLabel ?? table;
+
+  return (
+    <div className="fixed bottom-2 left-2 z-40 pointer-events-none">
+      <div className="flex items-center gap-1 rounded-full border bg-card px-2 py-0.5 text-[10px] text-subtle-foreground shadow-sm">
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${dotClass}`}
+          aria-hidden="true"
+        />
+        <span>
+          {name}: {label}
+        </span>
+      </div>
+    </div>
+  );
+}

@@ -13,7 +13,7 @@ import { addEntryFromCatalogAction } from '@/app/actions';
 import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
 import RefreshNowButton from '@/components/dev/RefreshNowButton';
-import DayRealtimeBridge from '@/components/realtime/DayRealtimeBridge';
+import RealtimeBridge from '@/components/realtime/RealtimeBridge';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
@@ -158,8 +158,32 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
 
       <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
 
-      {/* Step 3: Realtime (broad, user-scoped) — logs to console */}
-      <DayRealtimeBridge dayId={day?.id ?? null} selectedYMD={selectedYMD} />
+      {/* Realtime: scoped to this day */}
+      {day && (
+        <RealtimeBridge
+          channel={`rt-entries-day-${day.id}`}
+          table="entries"
+          // Scope strictly to this day; RLS keeps it user-scoped
+          filter={`day_id=eq.${day.id}`}
+          debounceMs={250}
+          ignoreLocalWritesTTL={400}
+          devLabel="Day entries"
+        />
+      )}
+
+      {/* Bootstrap case: day row doesn't exist yet; listen for it by date */}
+      {!day && (
+        <RealtimeBridge
+          channel={`rt-days-bootstrap-${selectedYMD}`}
+          table="days"
+          // Only care about this literal date; RLS keeps it user-scoped
+          filter={`date=eq.${selectedYMD}`}
+          debounceMs={250}
+          ignoreLocalWritesTTL={400}
+          devLabel="Day bootstrap"
+          showIndicator={false} // avoid a second status pill if you like
+        />
+      )}
     </main>
   );
 }

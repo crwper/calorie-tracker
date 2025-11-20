@@ -8,6 +8,7 @@ import WeightAddForm from '@/components/WeightAddForm';
 import DataList from '@/components/primitives/DataList';
 import WeightListRow from '@/components/WeightListRow';
 import { createWeightAction } from './actions';
+import RealtimeBridge from '@/components/realtime/RealtimeBridge';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,13 @@ export default async function WeightsPage({
           )}
         </div>
       </section>
+
+      {/* Realtime sync for weights */}
+      <RealtimeBridge
+        channel="rt-weights"
+        table="weights"
+        devLabel="Weights"
+      />
     </main>
   );
 }

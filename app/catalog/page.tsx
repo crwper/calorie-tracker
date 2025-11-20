@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createCatalogItemAction, updateCatalogItemAction } from './actions';
 import CatalogAddForm from '@/components/CatalogAddForm';
 import CatalogRow from '@/components/CatalogRow';
+import RealtimeBridge from '@/components/realtime/RealtimeBridge';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,13 @@ export default async function CatalogPage({
           )}
         </div>
       </section>
+
+      {/* Realtime sync for catalog items */}
+      <RealtimeBridge
+        channel="rt-catalog-items"
+        table="catalog_items"
+        devLabel="Catalog"
+      />
     </main>
   );
 }
