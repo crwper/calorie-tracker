@@ -31,7 +31,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   reorderEntriesAction,
   updateEntryQtyAction,
-  toggleEntryStatusAction,
+  updateEntryQtyAndStatusAction,
 } from '@/app/actions';
 import DeleteButton from '@/components/primitives/DeleteButton';
 import { deleteEntryAction } from '@/app/actions';
@@ -61,13 +61,21 @@ function useIsMounted() {
 
 // Debounce a form.requestSubmit() call
 function useDebouncedSubmit(delay = 600) {
-  const t = useRef<ReturnType<typeof setTimeout> | null>(null);
-  return (form: HTMLFormElement) => {
-    if (t.current) clearTimeout(t.current);
-    t.current = setTimeout(() => {
+  const t = useRef<number | null>(null);
+  const submit = (form: HTMLFormElement) => {
+    if (t.current) window.clearTimeout(t.current);
+    t.current = window.setTimeout(() => {
       form.requestSubmit();
+      t.current = null;
     }, delay);
   };
+  const cancel = () => {
+    if (t.current) {
+      window.clearTimeout(t.current);
+      t.current = null;
+    }
+  };
+  return { submit, cancel };
 }
 
 /* Probe pending state of the nearest <form> and lift it up */
@@ -259,9 +267,11 @@ function SortableEntry({
               entryId={e.id}
               currentStatus={e.status}
               selectedYMD={selectedYMD}
+              initialQtyStr={e.qty}
+              getLatestQty={() => qtyRef.current?.getLatestQty() ?? null}
               onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
               onPendingChange={setStatusPending}
-              onPreSubmit={() => qtyRef.current?.commitNow()}
+              onPreSubmit={() => qtyRef.current?.cancelPending()}
             />
           </div>
 
@@ -319,7 +329,11 @@ function SortableEntry({
 
 /* ----- Auto-save qty sub-component (native spinner only) ----- */
 
-export type AutoSaveQtyFormHandle = { commitNow: () => void };
+export type AutoSaveQtyFormHandle = {
+  commitNow: () => void;
+  getLatestQty: () => number | null;
+  cancelPending: () => void;
+};
 
 const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   entryId: string;
@@ -335,7 +349,7 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
 ) {
   const formRef = useRef<HTMLFormElement>(null);
   const [val, setVal] = useState(initialQty);
-  const debouncedSubmit = useDebouncedSubmit(600);
+  const { submit: debouncedSubmit, cancel: cancelDebounce } = useDebouncedSubmit(600);
 
   // Keep input in sync when server refresh replaces props
   useEffect(() => {
@@ -377,6 +391,13 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
       commitNow: () => {
         const n = parseQty(val);
         if (n != null) commit(n, 'immediate');
+      },
+      getLatestQty: () => {
+        const n = parseQty(val);
+        return n;
+      },
+      cancelPending: () => {
+        cancelDebounce();
       },
     }),
     [val, parseQty, commit] // ✅ satisfy exhaustive-deps
@@ -447,6 +468,8 @@ function CheckboxStatusForm({
   entryId,
   currentStatus,
   selectedYMD,
+  initialQtyStr,
+  getLatestQty,
   onSubmitOptimistic,
   onPendingChange,
   onPreSubmit,
@@ -454,12 +477,17 @@ function CheckboxStatusForm({
   entryId: string;
   currentStatus: 'planned' | 'eaten';
   selectedYMD: string;
+  /** string form of qty from props, used as fallback initial hidden value */
+  initialQtyStr: string;
+  /** read the latest typed qty from the sibling qty editor */
+  getLatestQty?: () => number | null;
   onSubmitOptimistic: (next: 'planned' | 'eaten') => void;
   onPendingChange: (p: boolean) => void;
   onPreSubmit: () => void; // flush qty before toggling
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const nextRef = useRef<HTMLInputElement>(null);
+  const qtyRef = useRef<HTMLInputElement>(null);
   const targetRef = useRef<'planned' | 'eaten'>(currentStatus);
 
   // Keep next target aligned if the server refresh changes currentStatus
@@ -471,13 +499,15 @@ function CheckboxStatusForm({
   return (
     <form
       ref={formRef}
-      action={toggleEntryStatusAction}
+      action={updateEntryQtyAndStatusAction}
       className="inline-flex items-center justify-center"
       onSubmit={() => onSubmitOptimistic(targetRef.current)}
     >
       <input type="hidden" name="date" value={selectedYMD} />
       <input type="hidden" name="entry_id" value={entryId} />
       <input ref={nextRef} type="hidden" name="next_status" value={currentStatus} />
+      {/* hidden qty that we fill just-in-time from the sibling qty editor */}
+      <input ref={qtyRef} type="hidden" name="qty" />
 
       <input
         id={`eaten-${entryId}`}
@@ -492,11 +522,16 @@ function CheckboxStatusForm({
         title={currentStatus === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
         checked={currentStatus === 'eaten'}
         onChange={(e) => {
-          // Flush qty if needed, then submit with the new target status
+          // Cancel any pending qty debounce; we will send qty ourselves
           onPreSubmit();
           const next = e.currentTarget.checked ? 'eaten' : 'planned';
           targetRef.current = next;
           if (nextRef.current) nextRef.current.value = next;
+          // Read latest qty and fill the hidden input (fallback to initial)
+          const latest = getLatestQty ? getLatestQty() : null;
+          if (qtyRef.current) {
+            qtyRef.current.value = latest != null ? String(latest) : String(initialQtyStr);
+          }
           formRef.current?.requestSubmit();
         }}
       />

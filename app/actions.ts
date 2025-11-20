@@ -87,6 +87,31 @@ export async function deleteEntryAction(formData: FormData) {
   revalidatePath(`/day/${dayDate}`);
 }
 
+export async function updateEntryQtyAndStatusAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Must be signed in');
+
+  const dateParam = String(formData.get('date') ?? '');
+  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+
+  const entryId = String(formData.get('entry_id') ?? '');
+  const nextStatus = String(formData.get('next_status') ?? 'planned');
+  const qty = Number(formData.get('qty') ?? '0');
+  if (!entryId) throw new Error('Missing entry_id');
+  if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
+  if (nextStatus !== 'planned' && nextStatus !== 'eaten') throw new Error('Invalid status');
+
+  const { error } = await supabase.rpc('update_entry_qty_and_status', {
+    p_entry_id: entryId,
+    p_qty: qty,
+    p_next_status: nextStatus,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/day/${dayDate}`);
+}
+
 export async function moveEntryUpAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

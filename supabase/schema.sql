@@ -326,6 +326,64 @@ $$;
 
 ALTER FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user uuid := auth.uid();
+  v_day uuid;
+  v_per_unit numeric(12,4);
+  v_old_qty numeric;
+  v_old_kcal numeric;
+begin
+  if v_user is null then
+    raise exception 'unauthenticated' using errcode = '28000';
+  end if;
+
+  if p_next_status not in ('planned','eaten') then
+    raise exception 'invalid status' using errcode = '22023';
+  end if;
+
+  if p_qty is null or p_qty <= 0 then
+    raise exception 'invalid qty' using errcode = '22023';
+  end if;
+
+  -- Lock the entry and verify ownership via the parent day
+  select e.day_id, e.kcal_per_unit_snapshot, e.qty, e.kcal_snapshot
+    into v_day, v_per_unit, v_old_qty, v_old_kcal
+  from public.entries e
+  join public.days d on d.id = e.day_id
+  where e.id = p_entry_id and d.user_id = v_user
+  for update;
+
+  if v_day is null then
+    raise exception 'forbidden: entry not owned by caller' using errcode = '42501';
+  end if;
+
+  -- Fallback for very old rows that may lack a snapshot
+  v_per_unit := coalesce(v_per_unit,
+                         round((v_old_kcal / nullif(v_old_qty, 0))::numeric, 4));
+
+  if v_per_unit is null then
+    raise exception 'cannot compute per-unit snapshot' using errcode = '22023';
+  end if;
+
+  update public.entries
+  set qty = p_qty,
+      kcal_per_unit_snapshot = v_per_unit,
+      kcal_snapshot = round((v_per_unit * p_qty)::numeric, 2),
+      status = p_next_status
+  where id = p_entry_id;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -613,6 +671,12 @@ GRANT ALL ON FUNCTION "public"."move_entry"("p_entry_id" "uuid", "p_dir" "text")
 GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) TO "anon";
 GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") TO "service_role";
 
 
 
