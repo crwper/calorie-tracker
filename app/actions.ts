@@ -178,7 +178,7 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   const kcal = qty * Number(item.kcal_per_unit);
 
   // Append at bottom atomically (RPC), then tag with catalog_item_id
-  const { data: entryId, error: insErr } = await supabase.rpc('add_entry_with_order', {
+  const { error: insErr } = await supabase.rpc('add_entry_with_order', {
     p_day_id: dayId,
     p_name: item.name,
     p_qty: qty,

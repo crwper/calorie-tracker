@@ -400,7 +400,7 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
         cancelDebounce();
       },
     }),
-    [val, parseQty, commit] // ✅ satisfy exhaustive-deps
+    [val, parseQty, commit, cancelDebounce]
   );
 
   return (

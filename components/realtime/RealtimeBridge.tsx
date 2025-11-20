@@ -66,7 +66,6 @@ export default function RealtimeBridge({
       debounceRef.current = window.setTimeout(
         () => {
           if (mounted) {
-            // eslint-disable-next-line no-console
             console.log('[REFRESH] realtime bridge (debounced)', { channel, table });
             router.refresh();
           }
@@ -82,7 +81,6 @@ export default function RealtimeBridge({
           ? shouldIgnoreRealtime(ignoreLocalWritesTTL)
           : false;
 
-      // eslint-disable-next-line no-console
       console.log('[RT] generic bridge event', { channel, table, ignore, payload });
 
       if (!ignore) scheduleRefresh();
@@ -91,7 +89,6 @@ export default function RealtimeBridge({
     const run = async () => {
       const { data } = await supabase.auth.getUser();
       if (!mounted || !data.user) {
-        // eslint-disable-next-line no-console
         console.log('[RT] bridge: no authenticated user, skipping', { channel, table });
         return;
       }
@@ -125,7 +122,6 @@ export default function RealtimeBridge({
 
       chan = c.subscribe((status: ChannelStatus) => {
         if (!mounted) return;
-        // eslint-disable-next-line no-console
         console.log('[RT] generic bridge channel status', { channel, table, status });
 
         if (status === 'SUBSCRIBED') {
@@ -155,7 +151,7 @@ export default function RealtimeBridge({
     return null;
   }
 
-  let label = rtState;
+  let label: string = rtState;
   if (rtState === 'connecting') label = 'connecting…';
   if (rtState === 'live') label = 'live';
   if (rtState === 'error') label = 'error (retrying)';

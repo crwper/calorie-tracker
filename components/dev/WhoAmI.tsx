@@ -15,7 +15,6 @@ export default function WhoAmI() {
       if (!mounted) return;
       const u = data.user;
       setWho(u ? `${u.email ?? u.id}` : 'no client session');
-      // eslint-disable-next-line no-console
       console.log('[WhoAmI] client user:', u);
     };
 
