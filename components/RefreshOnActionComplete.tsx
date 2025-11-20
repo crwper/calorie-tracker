@@ -20,6 +20,12 @@ export default function RefreshOnActionComplete({ debounceMs = 0 }: { debounceMs
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
+    // LEADING edge: as soon as the form goes pending, open the ignore window
+    if (!wasPending.current && pending) {
+      markLocalWrite();
+    }
+
+    // TRAILING edge: when the form settles, mark again (extends the window)
     if (wasPending.current && !pending) {
       if (timer.current) {
         clearTimeout(timer.current);
