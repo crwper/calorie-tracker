@@ -27,15 +27,21 @@ export default function DayRealtimeBridge({
     const scheduleRefresh = () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
-        if (mounted) router.refresh();
+        if (mounted) {
+          console.log('[REFRESH] realtime (debounced 250ms)');
+          router.refresh();
+        }
         debounceRef.current = null;
       }, 250); // same debounce you used in Step 5
     };
 
-   // One place to gate Realtime-driven refreshes for entries
-   const onEntriesEvent = () => {
-     if (!shouldIgnoreRealtime(400)) scheduleRefresh();
-   };
+    // One place to gate Realtime-driven refreshes for entries
+    const onEntriesEvent = (payload?: unknown) => {
+      const ignore = shouldIgnoreRealtime(400);
+      // eslint-disable-next-line no-console
+      console.log('[RT]', new Date().toISOString(), 'entries event', { ignore, payload });
+      if (!ignore) scheduleRefresh();
+    };
 
     const startEntriesSubscription = (id: string) => {
       // Tear down any existing entries sub before starting a new one

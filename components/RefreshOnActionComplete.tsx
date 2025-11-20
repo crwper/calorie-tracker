@@ -31,14 +31,17 @@ export default function RefreshOnActionComplete({ debounceMs = 0 }: { debounceMs
         clearTimeout(timer.current);
         timer.current = null;
       }
-      // Note a local write so the Realtime echo is ignored in this tab.
+      // Mark again at settle time to extend the ignore window to cover any
+      // follow‑up DB events landed just after the response returns.
       markLocalWrite();
       if (debounceMs > 0) {
         timer.current = window.setTimeout(() => {
+          console.log('[REFRESH] local form settle (1)', { debounceMs });
           router.refresh();
           timer.current = null;
         }, debounceMs);
       } else {
+        console.log('[REFRESH] local form settle (2)', { debounceMs });
         router.refresh();
       }
     }
