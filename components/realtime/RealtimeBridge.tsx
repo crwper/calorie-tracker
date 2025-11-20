@@ -106,7 +106,7 @@ export default function RealtimeBridge({
       let c = supabase.channel(channel);
 
       for (const ev of evs) {
-        c = c.on(
+        c = (c as any).on(
           'postgres_changes',
           {
             event: ev,
