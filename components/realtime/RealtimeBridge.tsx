@@ -59,6 +59,7 @@ export default function RealtimeBridge({
     let mounted = true;
     setRtState('idle');
 
+    // Real channel instance for cleanup
     let chan: ReturnType<typeof supabase.channel> | null = null;
 
     const scheduleRefresh = () => {
@@ -103,10 +104,28 @@ export default function RealtimeBridge({
 
       setRtState('connecting');
 
-      let c = supabase.channel(channel);
+      type ChannelStatus = 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT';
+
+      // Minimal view of the RealtimeChannel API that we care about
+      type PgChannel = {
+        on(
+          type: 'postgres_changes',
+          params: {
+            event: PostgresEvent | '*';
+            schema: string;
+            table?: string;
+            filter?: string;
+          },
+          callback: (payload: unknown) => void
+        ): PgChannel;
+        subscribe(callback: (status: ChannelStatus) => void): unknown;
+      };
+
+      const rawChannel = supabase.channel(channel);
+      let c = rawChannel as unknown as PgChannel;
 
       for (const ev of evs) {
-        c = (c as any).on(
+        c = c.on(
           'postgres_changes',
           {
             event: ev,
@@ -117,8 +136,6 @@ export default function RealtimeBridge({
           handleChange
         );
       }
-
-      type ChannelStatus = 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT';
 
       chan = c.subscribe((status: ChannelStatus) => {
         if (!mounted) return;
@@ -131,7 +148,7 @@ export default function RealtimeBridge({
         } else if (status === 'CLOSED') {
           setRtState('idle');
         }
-      });
+      }) as ReturnType<typeof supabase.channel>;
     };
 
     void run();
@@ -146,7 +163,7 @@ export default function RealtimeBridge({
     };
   }, [channel, table, schema, filter, events, debounceMs, ignoreLocalWritesTTL, router]);
 
-  // Dev-only indicator (similar idea to DayRealtimeBridge, but re-usable)
+  // Dev-only indicator
   if (process.env.NODE_ENV === 'production' || !showIndicator) {
     return null;
   }
