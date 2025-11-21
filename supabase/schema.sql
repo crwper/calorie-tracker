@@ -29,7 +29,14 @@ CREATE OR REPLACE FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p
     AS $$
 begin
   return public.add_entry_with_order(
-    p_day_id, p_name, p_qty, p_unit, p_kcal, p_status, NULL::uuid
+    p_day_id,
+    p_name,
+    p_qty,
+    p_unit,
+    p_kcal,
+    p_status,
+    NULL::uuid,   -- p_catalog_item_id
+    NULL::uuid    -- p_client_op_id
   );
 end;
 $$;
@@ -38,12 +45,12 @@ $$;
 ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid" DEFAULT NULL::"uuid", "p_client_op_id" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_user uuid := auth.uid();
+  v_user  uuid := auth.uid();
   v_owner uuid;
   v_next  integer;
   v_id    uuid;
@@ -58,7 +65,8 @@ begin
   where d.id = p_day_id;
 
   if v_owner is null or v_owner <> v_user then
-    raise exception 'forbidden: day not owned by caller' using errcode = '42501';
+    raise exception 'forbidden: day not owned by caller'
+      using errcode = '42501';
   end if;
 
   if p_qty is null or p_qty <= 0 then
@@ -74,15 +82,27 @@ begin
 
     begin
       insert into public.entries (
-        day_id, name, qty, unit,
-        kcal_snapshot, status, ordering,
+        day_id,
+        name,
+        qty,
+        unit,
+        kcal_snapshot,
+        status,
+        ordering,
         kcal_per_unit_snapshot,
-        catalog_item_id
+        catalog_item_id,
+        client_op_id
       ) values (
-        p_day_id, p_name, p_qty, p_unit,
-        p_kcal, p_status, v_next,
+        p_day_id,
+        p_name,
+        p_qty,
+        p_unit,
+        p_kcal,
+        p_status,
+        v_next,
         round((p_kcal / p_qty)::numeric, 4),
-        p_catalog_item_id
+        p_catalog_item_id,
+        p_client_op_id
       )
       returning id into v_id;
 
@@ -93,12 +113,54 @@ begin
     end;
   end loop;
 
-  raise exception 'could not allocate ordering after retries' using errcode = '40001';
+  raise exception 'could not allocate ordering after retries'
+    using errcode = '40001';
 end;
 $$;
 
 
-ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid", "p_client_op_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_entry_with_op"("p_entry_id" "uuid", "p_client_op_id" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user uuid := auth.uid();
+  v_day  uuid;
+begin
+  if v_user is null then
+    raise exception 'unauthenticated' using errcode = '28000';
+  end if;
+
+  -- Lock the entry and verify ownership via the parent day
+  select e.day_id
+    into v_day
+  from public.entries e
+  join public.days d on d.id = e.day_id
+  where e.id = p_entry_id and d.user_id = v_user
+  for update;
+
+  if v_day is null then
+    raise exception 'forbidden: entry not owned by caller'
+      using errcode = '42501';
+  end if;
+
+  -- Stamp client_op_id, then delete so DELETE has old.client_op_id
+  update public.entries
+  set client_op_id = p_client_op_id
+  where id = p_entry_id;
+
+  delete from public.entries
+  where id = p_entry_id;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_entry_with_op"("p_entry_id" "uuid", "p_client_op_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_catalog_items_usage_order"() RETURNS TABLE("id" "uuid", "name" "text", "unit" "text", "kcal_per_unit" numeric, "default_qty" numeric, "created_at" timestamp with time zone, "last_used_date" "date", "first_order_on_last_day" integer)
@@ -327,6 +389,70 @@ $$;
 ALTER FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[], "p_client_op_id" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user     uuid := auth.uid();
+  v_expected int;
+  v_seen     int;
+  v_id       uuid;
+  v_idx      int := 0;
+begin
+  if v_user is null then
+    raise exception 'unauthenticated' using errcode = '28000';
+  end if;
+
+  -- Ensure the day belongs to the caller.
+  if not exists (
+    select 1 from public.days d
+    where d.id = p_day_id and d.user_id = v_user
+  ) then
+    raise exception 'forbidden: day not owned by caller'
+      using errcode = '42501';
+  end if;
+
+  -- Lock all rows for that day.
+  perform 1 from public.entries e
+  where e.day_id = p_day_id
+  for update;
+
+  -- Sanity: require the array to include all entry ids for the day.
+  select count(*) into v_expected
+  from public.entries
+  where day_id = p_day_id;
+
+  select coalesce(array_length(p_ids, 1), 0) into v_seen;
+
+  if v_seen <> v_expected then
+    raise exception 'mismatch: provided % ids but day has %',
+      v_seen, v_expected using errcode = '22023';
+  end if;
+
+  -- Temporary negative to avoid UNIQUE(day_id, ordering) collisions during rewrite.
+  update public.entries
+  set ordering = -ordering - 1
+  where day_id = p_day_id;
+
+  -- Assign 0..N-1 in the given order, and stamp client_op_id on each touched row.
+  v_idx := 0;
+  foreach v_id in array p_ids loop
+    update public.entries
+    set ordering     = v_idx,
+        client_op_id = p_client_op_id
+    where id = v_id and day_id = p_day_id;
+    v_idx := v_idx + 1;
+  end loop;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[], "p_client_op_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -384,6 +510,72 @@ $$;
 
 ALTER FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text", "p_client_op_id" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_user      uuid := auth.uid();
+  v_day       uuid;
+  v_per_unit  numeric(12,4);
+  v_old_qty   numeric;
+  v_old_kcal  numeric;
+begin
+  if v_user is null then
+    raise exception 'unauthenticated' using errcode = '28000';
+  end if;
+
+  if p_next_status not in ('planned','eaten') then
+    raise exception 'invalid status' using errcode = '22023';
+  end if;
+
+  if p_qty is null or p_qty <= 0 then
+    raise exception 'invalid qty' using errcode = '22023';
+  end if;
+
+  -- Lock the entry and verify ownership via the parent day
+  select e.day_id,
+         e.kcal_per_unit_snapshot,
+         e.qty,
+         e.kcal_snapshot
+    into v_day, v_per_unit, v_old_qty, v_old_kcal
+  from public.entries e
+  join public.days d on d.id = e.day_id
+  where e.id = p_entry_id and d.user_id = v_user
+  for update;
+
+  if v_day is null then
+    raise exception 'forbidden: entry not owned by caller'
+      using errcode = '42501';
+  end if;
+
+  -- Fallback for very old rows that may lack a snapshot
+  v_per_unit := coalesce(
+    v_per_unit,
+    round((v_old_kcal / nullif(v_old_qty, 0))::numeric, 4)
+  );
+
+  if v_per_unit is null then
+    raise exception 'cannot compute per-unit snapshot'
+      using errcode = '22023';
+  end if;
+
+  update public.entries
+  set qty                    = p_qty,
+      kcal_per_unit_snapshot = v_per_unit,
+      kcal_snapshot          = round((v_per_unit * p_qty)::numeric, 2),
+      status                 = p_next_status,
+      client_op_id           = p_client_op_id
+  where id = p_entry_id;
+
+  return;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text", "p_client_op_id" "uuid") OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -428,6 +620,7 @@ CREATE TABLE IF NOT EXISTS "public"."entries" (
     "ordering" integer NOT NULL,
     "catalog_item_id" "uuid",
     "kcal_per_unit_snapshot" numeric(12,4) NOT NULL,
+    "client_op_id" "uuid",
     CONSTRAINT "entries_status_check" CHECK (("status" = ANY (ARRAY['planned'::"text", 'eaten'::"text"])))
 );
 
@@ -654,9 +847,15 @@ GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name
 
 
 
-GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid", "p_client_op_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid", "p_client_op_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."add_entry_with_order"("p_day_id" "uuid", "p_name" "text", "p_qty" numeric, "p_unit" "text", "p_kcal" numeric, "p_status" "text", "p_catalog_item_id" "uuid", "p_client_op_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."delete_entry_with_op"("p_entry_id" "uuid", "p_client_op_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."delete_entry_with_op"("p_entry_id" "uuid", "p_client_op_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_entry_with_op"("p_entry_id" "uuid", "p_client_op_id" "uuid") TO "service_role";
 
 
 
@@ -690,9 +889,21 @@ GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uui
 
 
 
+GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[], "p_client_op_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[], "p_client_op_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reorder_entries"("p_day_id" "uuid", "p_ids" "uuid"[], "p_client_op_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text", "p_client_op_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text", "p_client_op_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_entry_qty_and_status"("p_entry_id" "uuid", "p_qty" numeric, "p_next_status" "text", "p_client_op_id" "uuid") TO "service_role";
 
 
 
