@@ -5,6 +5,11 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { todayYMDVancouver, isValidYMD } from '@/lib/dates';
 
+// Simple helper: generate a client op-id for this server action call.
+function newOpId(): string {
+  return crypto.randomUUID();
+}
+
 export async function addEntryAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -30,6 +35,8 @@ export async function addEntryAction(formData: FormData) {
   const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: dayDate });
   if (dayErr) throw new Error(dayErr.message);
 
+  const opId = newOpId();
+
   // Atomic append + snapshot handled inside the RPC
   const { error: insErr } = await supabase.rpc('add_entry_with_order', {
     p_day_id: dayId,
@@ -38,6 +45,8 @@ export async function addEntryAction(formData: FormData) {
     p_unit: unit,
     p_kcal: kcal,
     p_status: status,
+    // p_catalog_item_id left as default (NULL)
+    p_client_op_id: opId,
   });
   if (insErr) throw new Error(insErr.message);
 
@@ -59,9 +68,14 @@ export async function toggleEntryStatusAction(formData: FormData) {
   if (nextStatus !== 'planned' && nextStatus !== 'eaten') throw new Error('Invalid status');
 
   // RLS ensures you can only update entries whose day belongs to you
+  const opId = newOpId();
+
   const { error } = await supabase
     .from('entries')
-    .update({ status: nextStatus })
+    .update({
+      status: nextStatus,
+      client_op_id: opId,
+    })
     .eq('id', entryId);
 
   if (error) throw new Error(error.message);
@@ -80,8 +94,13 @@ export async function deleteEntryAction(formData: FormData) {
   const entryId = String(formData.get('entry_id') ?? '');
   if (!entryId) throw new Error('Missing entry_id');
 
-  // RLS ensures you can delete only entries whose parent day belongs to you
-  const { error } = await supabase.from('entries').delete().eq('id', entryId);
+  const opId = newOpId();
+
+  // Update client_op_id then delete, in a single RPC (RLS enforced inside)
+  const { error } = await supabase.rpc('delete_entry_with_op', {
+    p_entry_id: entryId,
+    p_client_op_id: opId,
+  });
   if (error) throw new Error(error.message);
 
   revalidatePath(`/day/${dayDate}`);
@@ -102,47 +121,16 @@ export async function updateEntryQtyAndStatusAction(formData: FormData) {
   if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
   if (nextStatus !== 'planned' && nextStatus !== 'eaten') throw new Error('Invalid status');
 
+  const opId = newOpId();
+
   const { error } = await supabase.rpc('update_entry_qty_and_status', {
     p_entry_id: entryId,
     p_qty: qty,
     p_next_status: nextStatus,
+    p_client_op_id: opId,
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/day/${dayDate}`);
-}
-
-export async function moveEntryUpAction(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Must be signed in');
-
-  // Selected day for revalidation
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
-
-  const entryId = String(formData.get('entry_id') ?? '');
-  if (!entryId) throw new Error('Missing entry_id');
-
-  const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'up' });
-  if (error) throw new Error(error.message);
-  revalidatePath(`/day/${dayDate}`);
-}
-
-export async function moveEntryDownAction(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Must be signed in');
-
-  // Selected day for revalidation
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
-
-  const entryId = String(formData.get('entry_id') ?? '');
-  if (!entryId) throw new Error('Missing entry_id');
-
-  const { error } = await supabase.rpc('move_entry', { p_entry_id: entryId, p_dir: 'down' });
-  if (error) throw new Error(error.message);
   revalidatePath(`/day/${dayDate}`);
 }
 
@@ -177,6 +165,8 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   const qty = Number(item.default_qty) * mult;
   const kcal = qty * Number(item.kcal_per_unit);
 
+  const opId = newOpId();
+
   // Append at bottom atomically (RPC), then tag with catalog_item_id
   const { error: insErr } = await supabase.rpc('add_entry_with_order', {
     p_day_id: dayId,
@@ -186,6 +176,7 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     p_kcal: kcal,
     p_status: status,
     p_catalog_item_id: item.id,
+    p_client_op_id: opId,
   });
   if (insErr) throw new Error(insErr.message);
 
@@ -227,12 +218,15 @@ export async function updateEntryQtyAction(formData: FormData) {
 
   const newKcal = Number((qty * Number(perUnit)).toFixed(2));
 
+  const opId = newOpId();
+
   const { error: updErr } = await supabase
     .from('entries')
     .update({
       qty,
       kcal_snapshot: newKcal,
       kcal_per_unit_snapshot: perUnit,
+      client_op_id: opId,
     })
     .eq('id', entryId);
 
@@ -260,9 +254,12 @@ export async function reorderEntriesAction(input: { date: string; ids: string[] 
     return;
   }
 
+  const opId = newOpId();
+
   const { error } = await supabase.rpc('reorder_entries', {
     p_day_id: day.id,
     p_ids: input.ids,
+    p_client_op_id: opId,
   });
 
   if (error) throw new Error(error.message);
