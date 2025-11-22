@@ -14,6 +14,7 @@ import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
 import RefreshNowButton from '@/components/dev/RefreshNowButton';
 import RealtimeBridge from '@/components/realtime/RealtimeBridge';
+import PendingOpsDebug from '@/components/realtime/PendingOpsDebug';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
@@ -184,6 +185,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
           showIndicator={false} // avoid a second status pill if you like
         />
       )}
+
+      {/* Dev‑only pending op‑id overlay */}
+      {process.env.NODE_ENV !== 'production' ? <PendingOpsDebug /> : null}
     </main>
   );
 }

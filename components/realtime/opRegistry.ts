@@ -22,10 +22,17 @@ const pending = new Map<string, PendingOp>();
 
 export function registerPendingOp(op: PendingOp) {
   pending.set(op.id, op);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[opRegistry] register', op);
+  }
 }
 
 export function ackOp(id: string) {
+  const op = pending.get(id);
   pending.delete(id);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[opRegistry] ack', id, op);
+  }
 }
 
 export function hasPendingOp(id: string): boolean {
