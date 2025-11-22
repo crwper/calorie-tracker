@@ -8,11 +8,14 @@ import {
 } from '@/components/realtime/opRegistry';
 
 export default function PendingOpsDebug() {
-  // Don’t render in production at all
+  // Don’t render (or mount any hook-using children) in production at all
   if (process.env.NODE_ENV === 'production') {
     return null;
   }
+  return <PendingOpsDebugInner />;
+}
 
+function PendingOpsDebugInner() {
   const [ops, setOps] = useState<PendingOp[]>([]);
 
   useEffect(() => {

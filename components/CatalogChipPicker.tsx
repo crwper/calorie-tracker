@@ -1,7 +1,7 @@
 // components/CatalogChipPicker.tsx
 'use client';
 
-import { useMemo, useState, useRef, type FormEvent } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { registerPendingOp } from '@/components/realtime/opRegistry';
 import { emitEntryAdded, type Entry as DayEntry } from '@/components/EntriesList';
@@ -102,7 +102,7 @@ function CatalogChipForm({
   const clientOpInputRef = useRef<HTMLInputElement | null>(null);
   const entryIdInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = () => {
     // Generate ids for THIS gesture
     const opId = crypto.randomUUID();
     const entryId = crypto.randomUUID();

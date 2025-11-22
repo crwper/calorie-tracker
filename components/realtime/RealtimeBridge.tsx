@@ -115,8 +115,8 @@ export default function RealtimeBridge({
       } else if (!clientOpId && eventType === 'DELETE') {
         // 2) DELETE + RLS: we only get the PK → match by entryId
         const entryId =
-          typeof (oldRow as any).id === 'string'
-            ? (oldRow as any).id
+          typeof (oldRow as { id?: unknown }).id === 'string'
+            ? (oldRow as { id?: string }).id
             : null;
 
         if (entryId && ackOpByEntryId(entryId)) {

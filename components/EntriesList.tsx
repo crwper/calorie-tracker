@@ -9,7 +9,6 @@ import {
   forwardRef,
   useImperativeHandle,
   useCallback,
-  type FormEvent,
 } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -404,7 +403,7 @@ function EntryDeleteForm({
 }) {
   const clientOpInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = () => {
     // Let the form submit normally, but stamp + register op-id first.
     const opId = crypto.randomUUID();
     if (clientOpInputRef.current) {
