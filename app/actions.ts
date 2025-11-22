@@ -10,49 +10,6 @@ function newOpId(): string {
   return crypto.randomUUID();
 }
 
-export async function addEntryAction(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Must be signed in');
-
-  const name = String(formData.get('name') ?? '').trim();
-  const qty = Number(formData.get('qty') ?? '0');
-  const unit = String(formData.get('unit') ?? '').trim();
-  const kcal = Number(formData.get('kcal_snapshot') ?? '0');
-  const status =
-    String(formData.get('status') ?? 'planned') === 'eaten' ? 'eaten' : 'planned';
-
-  if (!name) throw new Error('Name required');
-  if (!unit) throw new Error('Unit required');
-  if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
-  if (!Number.isFinite(kcal) || kcal <= 0) throw new Error('kcal must be a positive number');
-
-  // Use selected day from the form, fall back to today if missing/invalid
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
-
-  // Ensure the selected day exists and get its id
-  const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', { p_date: dayDate });
-  if (dayErr) throw new Error(dayErr.message);
-
-  const opId = newOpId();
-
-  // Atomic append + snapshot handled inside the RPC
-  const { error: insErr } = await supabase.rpc('add_entry_with_order', {
-    p_day_id: dayId,
-    p_name: name,
-    p_qty: qty,
-    p_unit: unit,
-    p_kcal: kcal,
-    p_status: status,
-    // p_catalog_item_id left as default (NULL)
-    p_client_op_id: opId,
-  });
-  if (insErr) throw new Error(insErr.message);
-
-  revalidatePath(`/day/${dayDate}`);
-}
-
 export async function toggleEntryStatusAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
