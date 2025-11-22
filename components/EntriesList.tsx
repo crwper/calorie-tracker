@@ -8,7 +8,8 @@ import {
   useTransition,
   forwardRef,
   useImperativeHandle,
-  useCallback
+  useCallback,
+  type FormEvent,
 } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -41,6 +42,7 @@ import Grip from '@/components/icons/Grip';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { useFormStatus } from 'react-dom';
 import { markLocalWrite } from '@/components/realtime/localWritePulse';
+import { registerPendingOp } from '@/components/realtime/opRegistry';
 
 type Entry = {
   id: string;
@@ -129,11 +131,22 @@ export default function EntriesList({
   async function persistOrder(next: Entry[], prev: Entry[]) {
     try {
       setSaving(true);
+
+      const opId = crypto.randomUUID();
+      registerPendingOp({
+        id: opId,
+        kind: 'reorder',
+        entryIds: next.map((e) => e.id),
+        startedAt: Date.now(),
+      });
+
       await reorderEntriesAction({
         date: selectedYMD,
         ids: next.map((e) => e.id),
+        client_op_id: opId,
       });
-      // De-dupe echo for this tab
+
+      // De-dupe echo for this tab (legacy TTL path still fine)
       markLocalWrite();
       startTransition(() => {
         router.refresh();
@@ -314,16 +327,58 @@ function SortableEntry({
         </div>
       }
       actions={
-        <DeleteButton
-          formAction={deleteEntryAction}
-          hidden={{ entry_id: e.id, date: selectedYMD }}
-          title="Delete entry"
-          aria-label="Delete entry"
-          confirmMessage="Delete this entry?"
-          withRefresh={250}
+        <EntryDeleteForm
+          entryId={e.id}
+          selectedYMD={selectedYMD}
         />
       }
     />
+  );
+}
+
+function EntryDeleteForm({
+  entryId,
+  selectedYMD,
+}: {
+  entryId: string;
+  selectedYMD: string;
+}) {
+  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    // Let the form submit normally, but stamp + register op-id first.
+    const opId = crypto.randomUUID();
+    if (clientOpInputRef.current) {
+      clientOpInputRef.current.value = opId;
+    }
+    registerPendingOp({
+      id: opId,
+      kind: 'delete',
+      entryIds: [entryId],
+      startedAt: Date.now(),
+    });
+    // no preventDefault: we want the submission to go ahead
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="hidden" name="entry_id" value={entryId} />
+      <input type="hidden" name="date" value={selectedYMD} />
+      <input
+        ref={clientOpInputRef}
+        type="hidden"
+        name="client_op_id"
+        value=""
+      />
+      <DeleteButton
+        formAction={deleteEntryAction}
+        inlineInParentForm
+        title="Delete entry"
+        aria-label="Delete entry"
+        confirmMessage="Delete this entry?"
+        withRefresh={250}
+      />
+    </form>
   );
 }
 
@@ -350,6 +405,7 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   const formRef = useRef<HTMLFormElement>(null);
   const [val, setVal] = useState(initialQty);
   const { submit: debouncedSubmit, cancel: cancelDebounce } = useDebouncedSubmit(600);
+  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep input in sync when server refresh replaces props
   useEffect(() => {
@@ -373,15 +429,28 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
       onQtyOptimistic(next); // optimistic kcal update
       const form = formRef.current;
       if (!form) return;
+
+      const opId = crypto.randomUUID();
+      if (clientOpInputRef.current) {
+        clientOpInputRef.current.value = opId;
+      }
+      registerPendingOp({
+        id: opId,
+        kind: 'update_qty',
+        entryIds: [entryId],
+        startedAt: Date.now(),
+      });
+
       const input = form.elements.namedItem('qty') as HTMLInputElement | null;
       if (input) input.value = String(next);
+
       if (mode === 'immediate') {
         form.requestSubmit();
       } else {
         debouncedSubmit(form);
       }
     },
-    [onQtyOptimistic, debouncedSubmit]
+    [onQtyOptimistic, debouncedSubmit, entryId]
   );
 
   // Expose "commitNow" so parent can flush before toggling to eaten
@@ -417,6 +486,12 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
     >
       <input type="hidden" name="date" value={selectedYMD} />
       <input type="hidden" name="entry_id" value={entryId} />
+      <input
+        ref={clientOpInputRef}
+        type="hidden"
+        name="client_op_id"
+        value=""
+      />
       {readOnly ? (
         <>
           {/* Text-only when eaten */}
@@ -489,6 +564,7 @@ function CheckboxStatusForm({
   const nextRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
   const targetRef = useRef<'planned' | 'eaten'>(currentStatus);
+  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
 
   // Keep next target aligned if the server refresh changes currentStatus
   useEffect(() => {
@@ -506,8 +582,13 @@ function CheckboxStatusForm({
       <input type="hidden" name="date" value={selectedYMD} />
       <input type="hidden" name="entry_id" value={entryId} />
       <input ref={nextRef} type="hidden" name="next_status" value={currentStatus} />
-      {/* hidden qty that we fill just-in-time from the sibling qty editor */}
       <input ref={qtyRef} type="hidden" name="qty" />
+      <input
+        ref={clientOpInputRef}
+        type="hidden"
+        name="client_op_id"
+        value=""
+      />
 
       <input
         id={`eaten-${entryId}`}
@@ -527,11 +608,25 @@ function CheckboxStatusForm({
           const next = e.currentTarget.checked ? 'eaten' : 'planned';
           targetRef.current = next;
           if (nextRef.current) nextRef.current.value = next;
+
           // Read latest qty and fill the hidden input (fallback to initial)
           const latest = getLatestQty ? getLatestQty() : null;
           if (qtyRef.current) {
-            qtyRef.current.value = latest != null ? String(latest) : String(initialQtyStr);
+            qtyRef.current.value =
+              latest != null ? String(latest) : String(initialQtyStr);
           }
+
+          const opId = crypto.randomUUID();
+          if (clientOpInputRef.current) {
+            clientOpInputRef.current.value = opId;
+          }
+          registerPendingOp({
+            id: opId,
+            kind: 'update_qty_and_status',
+            entryIds: [entryId],
+            startedAt: Date.now(),
+          });
+
           formRef.current?.requestSubmit();
         }}
       />
