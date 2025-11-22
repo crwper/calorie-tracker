@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { shouldIgnoreRealtime } from '@/components/realtime/localWritePulse';
+import { hasPendingOp, ackOp } from '@/components/realtime/opRegistry';
 
 type RtState = 'idle' | 'connecting' | 'live' | 'error';
 type PostgresEvent = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -77,12 +78,39 @@ export default function RealtimeBridge({
     };
 
     const handleChange = (payload: unknown) => {
-      const ignore =
-        ignoreLocalWritesTTL > 0
-          ? shouldIgnoreRealtime(ignoreLocalWritesTTL)
-          : false;
+      const p = payload as any;
+      const newRow = p?.new ?? {};
+      const oldRow = p?.old ?? {};
 
-      console.log('[RT] generic bridge event', { channel, table, ignore, payload });
+      const rawOp =
+        newRow.client_op_id ??
+        oldRow.client_op_id ??
+        null;
+
+      const clientOpId = rawOp != null ? String(rawOp) : null;
+
+      let ignore = false;
+
+      // 1) Prefer op-id based matching (our optimistic plumbing)
+      if (clientOpId && hasPendingOp(clientOpId)) {
+        ignore = true;
+        ackOp(clientOpId);
+      } else {
+        // 2) Fallback: old time-based ignore window
+        ignore =
+          ignoreLocalWritesTTL > 0
+            ? shouldIgnoreRealtime(ignoreLocalWritesTTL)
+            : false;
+      }
+
+      console.log('[RT] generic bridge event', {
+        channel,
+        table,
+        clientOpId,
+        matchedLocalOp: clientOpId ? hasPendingOp(clientOpId) : false,
+        ignore,
+        payload,
+      });
 
       if (!ignore) scheduleRefresh();
     };

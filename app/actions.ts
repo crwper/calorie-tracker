@@ -165,7 +165,12 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   const qty = Number(item.default_qty) * mult;
   const kcal = qty * Number(item.kcal_per_unit);
 
-  const opId = newOpId();
+  // Prefer client-provided op-id, fall back to server-generated
+  const clientOpIdRaw = formData.get('client_op_id');
+  const opId =
+    typeof clientOpIdRaw === 'string' && clientOpIdRaw.trim()
+      ? clientOpIdRaw.trim()
+      : randomUUID();
 
   // Append at bottom atomically (RPC), then tag with catalog_item_id
   const { error: insErr } = await supabase.rpc('add_entry_with_order', {

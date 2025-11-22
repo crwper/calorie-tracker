@@ -1,8 +1,9 @@
 // components/CatalogChipPicker.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, FormEvent } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
+import { registerPendingOp } from '@/components/realtime/opRegistry';
 
 type Item = {
   id: string;
@@ -68,32 +69,82 @@ export default function CatalogChipPicker({
       {/* Chips list (filtered live, keeps original ordering from server) */}
       <div className="flex flex-wrap gap-2">
         {display.map((it) => (
-          <form key={it.id} action={addFromCatalogAction}>
-            <input type="hidden" name="date" value={selectedYMD} />
-            <input type="hidden" name="mult" value="1" />
-            <button
-              type="submit"
-              name="catalog_item_id"
-              value={it.id}
-              className="border rounded px-2 py-1 text-left text-xs bg-chip-face hover:bg-chip-hover active:bg-chip-pressed focus:outline-none focus:ring-2 focus:ring-control-ring"
-              aria-label={`Add ${it.name}`}
-            >
-              <div className="font-medium">{it.name}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {Number(it.default_qty).toString()} {it.unit}
-              </div>
-            </button>
-            {/* Ensure the day view refreshes after adding */}
-            <RefreshOnActionComplete debounceMs={250} />
-          </form>
+          <CatalogChipForm
+            key={it.id}
+            item={it}
+            selectedYMD={selectedYMD}
+            addFromCatalogAction={addFromCatalogAction}
+          />
         ))}
         {filtered.length === 0 && (
           <div className="text-sm text-muted-foreground">No matches.</div>
         )}
         {truncated && (
-          <div className="text-xs text-subtle-foreground">Showing top {visibleLimit}. Type to search all.</div>
+          <div className="text-xs text-subtle-foreground">
+            Showing top {visibleLimit}. Type to search all.
+          </div>
         )}
       </div>
     </div>
+  );
+}
+
+function CatalogChipForm({
+  item,
+  selectedYMD,
+  addFromCatalogAction,
+}: {
+  item: Item;
+  selectedYMD: string;
+  addFromCatalogAction: (formData: FormData) => Promise<void>;
+}) {
+  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // Generate a new op-id for THIS gesture
+    const opId = crypto.randomUUID();
+
+    // Stamp it into the hidden input so the server can read it
+    if (clientOpInputRef.current) {
+      clientOpInputRef.current.value = opId;
+    }
+
+    // Register this op locally so Realtime can recognize it later
+    registerPendingOp({
+      id: opId,
+      kind: 'add_from_catalog',
+      // no entryIds yet; we don't know the DB id until after insert
+      startedAt: Date.now(),
+    });
+
+    // Let the normal form submission proceed
+    // (no preventDefault here)
+  };
+
+  return (
+    <form action={addFromCatalogAction} onSubmit={handleSubmit}>
+      <input type="hidden" name="date" value={selectedYMD} />
+      <input type="hidden" name="mult" value="1" />
+      <input
+        ref={clientOpInputRef}
+        type="hidden"
+        name="client_op_id"
+        value=""
+      />
+      <button
+        type="submit"
+        name="catalog_item_id"
+        value={item.id}
+        className="border rounded px-2 py-1 text-left text-xs bg-chip-face hover:bg-chip-hover active:bg-chip-pressed focus:outline-none focus:ring-2 focus:ring-control-ring"
+        aria-label={`Add ${item.name}`}
+      >
+        <div className="font-medium">{item.name}</div>
+        <div className="text-[11px] text-muted-foreground">
+          {Number(item.default_qty).toString()} {item.unit}
+        </div>
+      </button>
+      {/* Ensure the day view refreshes after adding (for now) */}
+      <RefreshOnActionComplete debounceMs={250} />
+    </form>
   );
 }

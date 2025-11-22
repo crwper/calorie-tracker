@@ -1,0 +1,38 @@
+// components/realtime/opRegistry.ts
+'use client';
+
+export type OpKind =
+  | 'add_from_catalog'
+  | 'add_manual'
+  | 'update_qty'
+  | 'update_status'
+  | 'update_qty_and_status'
+  | 'delete'
+  | 'reorder';
+
+export type PendingOp = {
+  id: string;
+  kind: OpKind;
+  // Optional metadata we can extend later
+  entryIds?: string[];
+  startedAt: number;
+};
+
+const pending = new Map<string, PendingOp>();
+
+export function registerPendingOp(op: PendingOp) {
+  pending.set(op.id, op);
+}
+
+export function ackOp(id: string) {
+  pending.delete(id);
+}
+
+export function hasPendingOp(id: string): boolean {
+  return pending.has(id);
+}
+
+// Handy for future debugging
+export function listPendingOps(): PendingOp[] {
+  return Array.from(pending.values());
+}
