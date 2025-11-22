@@ -129,7 +129,7 @@ function CatalogChipForm({
         ref={clientOpInputRef}
         type="hidden"
         name="client_op_id"
-        value=""
+        defaultValue=""
       />
       <button
         type="submit"

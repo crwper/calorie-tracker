@@ -368,7 +368,7 @@ function EntryDeleteForm({
         ref={clientOpInputRef}
         type="hidden"
         name="client_op_id"
-        value=""
+        defaultValue=""
       />
       <DeleteButton
         formAction={deleteEntryAction}
@@ -490,7 +490,7 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
         ref={clientOpInputRef}
         type="hidden"
         name="client_op_id"
-        value=""
+        defaultValue=""
       />
       {readOnly ? (
         <>
@@ -587,7 +587,7 @@ function CheckboxStatusForm({
         ref={clientOpInputRef}
         type="hidden"
         name="client_op_id"
-        value=""
+        defaultValue=""
       />
 
       <input
