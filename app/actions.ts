@@ -51,9 +51,13 @@ export async function deleteEntryAction(formData: FormData) {
   const entryId = String(formData.get('entry_id') ?? '');
   if (!entryId) throw new Error('Missing entry_id');
 
-  const opId = newOpId();
+  const clientOpIdRaw = formData.get('client_op_id');
+  const clientOpId =
+    typeof clientOpIdRaw === 'string' && clientOpIdRaw.trim()
+      ? clientOpIdRaw.trim()
+      : null;
+  const opId = clientOpId ?? newOpId();
 
-  // Update client_op_id then delete, in a single RPC (RLS enforced inside)
   const { error } = await supabase.rpc('delete_entry_with_op', {
     p_entry_id: entryId,
     p_client_op_id: opId,
@@ -78,7 +82,12 @@ export async function updateEntryQtyAndStatusAction(formData: FormData) {
   if (!Number.isFinite(qty) || qty <= 0) throw new Error('Qty must be > 0');
   if (nextStatus !== 'planned' && nextStatus !== 'eaten') throw new Error('Invalid status');
 
-  const opId = newOpId();
+  const clientOpIdRaw = formData.get('client_op_id');
+  const clientOpId =
+    typeof clientOpIdRaw === 'string' && clientOpIdRaw.trim()
+      ? clientOpIdRaw.trim()
+      : null;
+  const opId = clientOpId ?? newOpId();
 
   const { error } = await supabase.rpc('update_entry_qty_and_status', {
     p_entry_id: entryId,
@@ -180,7 +189,12 @@ export async function updateEntryQtyAction(formData: FormData) {
 
   const newKcal = Number((qty * Number(perUnit)).toFixed(2));
 
-  const opId = newOpId();
+  const clientOpIdRaw = formData.get('client_op_id');
+  const clientOpId =
+    typeof clientOpIdRaw === 'string' && clientOpIdRaw.trim()
+      ? clientOpIdRaw.trim()
+      : null;
+  const opId = clientOpId ?? newOpId();
 
   const { error: updErr } = await supabase
     .from('entries')
@@ -196,8 +210,12 @@ export async function updateEntryQtyAction(formData: FormData) {
   revalidatePath(`/day/${dayDate}`);
 }
 
-export async function reorderEntriesAction(input: { date: string; ids: string[] }) {
-  const supabase = await createClient();
+export async function reorderEntriesAction(input: {
+  date: string;
+  ids: string[];
+  client_op_id?: string;
+}) {
+ const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
@@ -216,14 +234,18 @@ export async function reorderEntriesAction(input: { date: string; ids: string[] 
     return;
   }
 
-  const opId = newOpId();
+  const clientOpId =
+    typeof input.client_op_id === 'string' && input.client_op_id.trim()
+      ? input.client_op_id.trim()
+      : null;
+  const opId = clientOpId ?? newOpId();
 
   const { error } = await supabase.rpc('reorder_entries', {
     p_day_id: day.id,
     p_ids: input.ids,
     p_client_op_id: opId,
   });
-
+  
   if (error) throw new Error(error.message);
 
   revalidatePath(`/day/${dayDate}`);
