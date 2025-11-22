@@ -77,17 +77,31 @@ export default function RealtimeBridge({
       );
     };
 
+    type RowWithClientOpId = {
+      client_op_id?: string | null;
+      // keep it open so other columns don't cause type issues
+      [key: string]: unknown;
+    };
+
+    type RtChangePayload = {
+      new: RowWithClientOpId | null;
+      old: RowWithClientOpId | null;
+    };
+
     const handleChange = (payload: unknown) => {
-      const p = payload as any;
-      const newRow = p?.new ?? {};
-      const oldRow = p?.old ?? {};
+      const p = payload as RtChangePayload;
+      const newRow: RowWithClientOpId = p?.new ?? {};
+      const oldRow: RowWithClientOpId = p?.old ?? {};
 
       const rawOp =
         newRow.client_op_id ??
         oldRow.client_op_id ??
         null;
 
-      const clientOpId = rawOp != null ? String(rawOp) : null;
+      const clientOpId =
+        typeof rawOp === 'string' && rawOp.trim()
+          ? rawOp.trim()
+          : null;
 
       let ignore = false;
 
