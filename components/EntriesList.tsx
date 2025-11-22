@@ -64,19 +64,28 @@ function useIsMounted() {
 // Debounce a form.requestSubmit() call
 function useDebouncedSubmit(delay = 600) {
   const t = useRef<number | null>(null);
-  const submit = (form: HTMLFormElement) => {
+
+  // beforeSubmit(opId) will be called right before requestSubmit()
+  const submit = (
+    form: HTMLFormElement,
+    beforeSubmit: (opId: string) => void
+  ) => {
     if (t.current) window.clearTimeout(t.current);
     t.current = window.setTimeout(() => {
+      const opId = crypto.randomUUID();
+      beforeSubmit(opId);
       form.requestSubmit();
       t.current = null;
     }, delay);
   };
+
   const cancel = () => {
     if (t.current) {
       window.clearTimeout(t.current);
       t.current = null;
     }
   };
+
   return { submit, cancel };
 }
 
@@ -426,31 +435,37 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   // make it stable
   const commit = useCallback(
     (next: number, mode: 'debounced' | 'immediate') => {
-      onQtyOptimistic(next); // optimistic kcal update
+      onQtyOptimistic(next);
       const form = formRef.current;
       if (!form) return;
 
-      const opId = crypto.randomUUID();
-      if (clientOpInputRef.current) {
-        clientOpInputRef.current.value = opId;
-      }
-      registerPendingOp({
-        id: opId,
-        kind: 'update_qty',
-        entryIds: [entryId],
-        startedAt: Date.now(),
-      });
-
-      const input = form.elements.namedItem('qty') as HTMLInputElement | null;
-      if (input) input.value = String(next);
+      const applyOpId = (opId: string) => {
+        if (clientOpInputRef.current) {
+          clientOpInputRef.current.value = opId;
+        }
+        registerPendingOp({
+          id: opId,
+          kind: 'update_qty',
+          entryIds: [entryId],
+          startedAt: Date.now(),
+        });
+        const input = form.elements.namedItem('qty') as HTMLInputElement | null;
+        if (input) input.value = String(next);
+      };
 
       if (mode === 'immediate') {
+        // Make sure no old debounced submit is still queued
+        cancelDebounce();
+        const opId = crypto.randomUUID();
+        applyOpId(opId);
         form.requestSubmit();
       } else {
-        debouncedSubmit(form);
+        debouncedSubmit(form, (opId) => {
+          applyOpId(opId);
+        });
       }
     },
-    [onQtyOptimistic, debouncedSubmit, entryId]
+    [onQtyOptimistic, debouncedSubmit, cancelDebounce, entryId]
   );
 
   // Expose "commitNow" so parent can flush before toggling to eaten
