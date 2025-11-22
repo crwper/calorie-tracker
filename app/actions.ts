@@ -170,7 +170,7 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   const opId =
     typeof clientOpIdRaw === 'string' && clientOpIdRaw.trim()
       ? clientOpIdRaw.trim()
-      : randomUUID();
+      : newOpId();
 
   // Append at bottom atomically (RPC), then tag with catalog_item_id
   const { error: insErr } = await supabase.rpc('add_entry_with_order', {
