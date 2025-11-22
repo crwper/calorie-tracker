@@ -52,21 +52,28 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     .maybeSingle();
 
   let entries: Array<{
-    id: string; name: string; qty: string; unit: string;
-    kcal_snapshot: number; status: 'planned' | 'eaten';
+    id: string;
+    name: string;
+    qty: string;
+    unit: string;
+    kcal_snapshot: number;
+    status: 'planned' | 'eaten';
     created_at: string;
+    kcal_per_unit_snapshot: number | null;
   }> = [];
 
   if (day) {
     const { data } = await supabase
       .from('entries')
-      .select('id, name, qty, unit, kcal_snapshot, status, created_at')
+      .select('id, name, qty, unit, kcal_snapshot, kcal_per_unit_snapshot, status, created_at')
       .eq('day_id', day.id)
-      .order('ordering', { ascending: true });   // show oldest→newest (bottom appends)
-    // Coerce Supabase numeric -> JS number once to avoid string math bugs
+      .order('ordering', { ascending: true });
+
     entries = (data ?? []).map(e => ({
       ...e,
       kcal_snapshot: Number(e.kcal_snapshot ?? 0),
+      kcal_per_unit_snapshot:
+        e.kcal_per_unit_snapshot != null ? Number(e.kcal_per_unit_snapshot) : null,
     }));
   }
 

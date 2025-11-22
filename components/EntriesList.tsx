@@ -52,6 +52,7 @@ type Entry = {
   kcal_snapshot: number;
   status: 'planned' | 'eaten';
   created_at: string;
+  kcal_per_unit_snapshot?: number | null;
 };
 
 /* Mounted guard to avoid SSR/CSR attribute mismatches on the drag handle */
@@ -188,12 +189,38 @@ export default function EntriesList({
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it;
-        const oldQty = parseFloat(String(it.qty)) || 0;
-        const perUnit = oldQty > 0 ? Number(it.kcal_snapshot) / oldQty : undefined;
+
+        // Prefer the canonical per-unit snapshot if we have it
+        let perUnit =
+          it.kcal_per_unit_snapshot != null
+            ? Number(it.kcal_per_unit_snapshot)
+            : undefined;
+
+        // Fallback for very old rows that don't have a snapshot yet:
+        if (perUnit == null) {
+          const baseQty = parseFloat(String(it.qty)) || 0;
+          const baseKcal = Number(it.kcal_snapshot) || 0;
+          if (baseQty > 0 && Number.isFinite(baseKcal)) {
+            perUnit = Number((baseKcal / baseQty).toFixed(4));
+          }
+        }
+
+        if (perUnit == null || !Number.isFinite(perUnit) || perUnit <= 0) {
+          // Give up on kcal optimism, but still update the qty text
+          return {
+            ...it,
+            qty: String(newQty),
+          };
+        }
+
+        const nextKcal = Number((perUnit * newQty).toFixed(2));
+
         return {
           ...it,
           qty: String(newQty),
-          kcal_snapshot: perUnit ? Number((perUnit * newQty).toFixed(2)) : it.kcal_snapshot,
+          kcal_snapshot: nextKcal,
+          // Freeze the per-unit so future edits don't re-derive it
+          kcal_per_unit_snapshot: perUnit,
         };
       })
     );
