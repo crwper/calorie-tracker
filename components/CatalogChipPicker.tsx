@@ -1,9 +1,10 @@
 // components/CatalogChipPicker.tsx
 'use client';
 
-import { useMemo, useState, useRef, FormEvent } from 'react';
+import { useMemo, useState, useRef, type FormEvent } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { registerPendingOp } from '@/components/realtime/opRegistry';
+import { emitEntryAdded, type Entry as DayEntry } from '@/components/EntriesList';
 
 type Item = {
   id: string;
@@ -99,26 +100,57 @@ function CatalogChipForm({
   addFromCatalogAction: (formData: FormData) => Promise<void>;
 }) {
   const clientOpInputRef = useRef<HTMLInputElement | null>(null);
+  const entryIdInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // Generate a new op-id for THIS gesture
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    // Generate ids for THIS gesture
     const opId = crypto.randomUUID();
+    const entryId = crypto.randomUUID();
 
-    // Stamp it into the hidden input so the server can read it
+    // Stamp them into hidden inputs so the server/DB can use them
     if (clientOpInputRef.current) {
       clientOpInputRef.current.value = opId;
     }
+    if (entryIdInputRef.current) {
+      entryIdInputRef.current.value = entryId;
+    }
 
-    // Register this op locally so Realtime can recognize it later
+    // Build an optimistic Entry shape for the Day list
+    const baseQty = Number(item.default_qty ?? 0);
+    const mult = 1; // current UI always uses mult=1
+    const qty = baseQty * mult;
+
+    if (!Number.isFinite(qty) || qty <= 0) {
+      // Let the form submit to hit server validation, but don't add a broken row locally
+    } else {
+      const perUnitRaw = Number(item.kcal_per_unit ?? 0);
+      const perUnit = Number(perUnitRaw.toFixed(4));
+      const kcal = Number((qty * perUnit).toFixed(2));
+
+      const optimisticEntry: DayEntry = {
+        id: entryId,
+        name: item.name,
+        qty: qty.toString(),
+        unit: item.unit,
+        kcal_snapshot: kcal,
+        status: 'planned',
+        created_at: new Date().toISOString(),
+        kcal_per_unit_snapshot: perUnit,
+      };
+
+      // Push into EntriesList's local state immediately
+      emitEntryAdded(optimisticEntry);
+    }
+
+    // Register this op locally so Realtime can recognize its echo
     registerPendingOp({
       id: opId,
       kind: 'add_from_catalog',
-      // no entryIds yet; we don't know the DB id until after insert
+      entryIds: [entryId],
       startedAt: Date.now(),
     });
 
-    // Let the normal form submission proceed
-    // (no preventDefault here)
+    // Let the normal form submission proceed (no preventDefault)
   };
 
   return (
@@ -129,6 +161,12 @@ function CatalogChipForm({
         ref={clientOpInputRef}
         type="hidden"
         name="client_op_id"
+        defaultValue=""
+      />
+      <input
+        ref={entryIdInputRef}
+        type="hidden"
+        name="entry_id"
         defaultValue=""
       />
       <button

@@ -44,7 +44,7 @@ import { useFormStatus } from 'react-dom';
 import { markLocalWrite } from '@/components/realtime/localWritePulse';
 import { registerPendingOp } from '@/components/realtime/opRegistry';
 
-type Entry = {
+export type Entry = {
   id: string;
   name: string;
   qty: string;
@@ -54,6 +54,22 @@ type Entry = {
   created_at: string;
   kcal_per_unit_snapshot?: number | null;
 };
+
+type EntryAddedListener = (entry: Entry) => void;
+const entryAddedListeners = new Set<EntryAddedListener>();
+
+export function subscribeToEntryAdds(listener: EntryAddedListener): () => void {
+  entryAddedListeners.add(listener);
+  return () => {
+    entryAddedListeners.delete(listener);
+  };
+}
+
+export function emitEntryAdded(entry: Entry): void {
+  for (const listener of entryAddedListeners) {
+    listener(entry);
+  }
+}
 
 /* Mounted guard to avoid SSR/CSR attribute mismatches on the drag handle */
 function useIsMounted() {
@@ -132,6 +148,13 @@ export default function EntriesList({
   useEffect(() => {
     setItems(entries);
   }, [entries]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToEntryAdds((entry) => {
+      setItems((prev) => [...prev, entry]);
+    });
+    return unsubscribe;
+  }, []);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),

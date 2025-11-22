@@ -128,8 +128,10 @@ export async function addEntryFromCatalogAction(formData: FormData) {
 
   if (itemErr) throw new Error(itemErr.message);
 
-  const qty = Number(item.default_qty) * mult;
-  const kcal = qty * Number(item.kcal_per_unit);
+  const baseQty = Number(item.default_qty);
+  const perUnit = Number(item.kcal_per_unit);
+  const qty = baseQty * mult;
+  const kcal = Number((qty * perUnit).toFixed(2));
 
   // Prefer client-provided op-id, fall back to server-generated
   const clientOpIdRaw = formData.get('client_op_id');
@@ -137,6 +139,13 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     typeof clientOpIdRaw === 'string' && clientOpIdRaw.trim()
       ? clientOpIdRaw.trim()
       : newOpId();
+
+  // Optional client-chosen entry id (for optimistic UI)
+  const entryIdRaw = formData.get('entry_id');
+  const entryId =
+    typeof entryIdRaw === 'string' && entryIdRaw.trim()
+      ? entryIdRaw.trim()
+      : crypto.randomUUID();
 
   // Append at bottom atomically (RPC), then tag with catalog_item_id
   const { error: insErr } = await supabase.rpc('add_entry_with_order', {
@@ -148,6 +157,7 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     p_status: status,
     p_catalog_item_id: item.id,
     p_client_op_id: opId,
+    p_id: entryId,
   });
   if (insErr) throw new Error(insErr.message);
 
