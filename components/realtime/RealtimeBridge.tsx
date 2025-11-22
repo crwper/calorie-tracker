@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { shouldIgnoreRealtime } from '@/components/realtime/localWritePulse';
-import { hasPendingOp, ackOp } from '@/components/realtime/opRegistry';
+import { hasPendingOp, ackOp, ackOpByEntryId } from '@/components/realtime/opRegistry';
 
 type RtState = 'idle' | 'connecting' | 'live' | 'error';
 type PostgresEvent = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -89,7 +89,8 @@ export default function RealtimeBridge({
     };
 
     const handleChange = (payload: unknown) => {
-      const p = payload as RtChangePayload;
+      const p = payload as RtChangePayload & { eventType?: PostgresEvent };
+      const eventType = p.eventType;
       const newRow: RowWithClientOpId = p?.new ?? {};
       const oldRow: RowWithClientOpId = p?.old ?? {};
 
@@ -104,15 +105,32 @@ export default function RealtimeBridge({
           : null;
 
       let ignore = false;
+      let matchedLocalOp = false;
 
-      const hadPending = clientOpId ? hasPendingOp(clientOpId) : false;
-
-      // 1) Prefer op-id based matching (our optimistic plumbing)
+      // 1) Prefer op-id based matching (INSERT / UPDATE cases)
       if (clientOpId && hasPendingOp(clientOpId)) {
+        matchedLocalOp = true;
         ignore = true;
         ackOp(clientOpId);
+      } else if (!clientOpId && eventType === 'DELETE') {
+        // 2) DELETE + RLS: we only get the PK → match by entryId
+        const entryId =
+          typeof (oldRow as any).id === 'string'
+            ? (oldRow as any).id
+            : null;
+
+        if (entryId && ackOpByEntryId(entryId)) {
+          matchedLocalOp = true;
+          ignore = true; // local delete; we already removed it optimistically
+        } else {
+          // no pending op -> treat as remote delete
+          ignore =
+            ignoreLocalWritesTTL > 0
+              ? shouldIgnoreRealtime(ignoreLocalWritesTTL)
+              : false;
+        }
       } else {
-        // 2) Fallback: old time-based ignore window
+        // 3) Everything else: fall back to TTL ignore window
         ignore =
           ignoreLocalWritesTTL > 0
             ? shouldIgnoreRealtime(ignoreLocalWritesTTL)
@@ -123,7 +141,7 @@ export default function RealtimeBridge({
         channel,
         table,
         clientOpId,
-        matchedLocalOp: hadPending,
+        matchedLocalOp,
         ignore,
         payload,
       });

@@ -43,3 +43,17 @@ export function hasPendingOp(id: string): boolean {
 export function listPendingOps(): PendingOp[] {
   return Array.from(pending.values());
 }
+
+export function ackOpByEntryId(entryId: string): boolean {
+  let matched = false;
+  for (const [id, op] of pending.entries()) {
+    if (op.entryIds?.includes(entryId)) {
+      pending.delete(id);
+      matched = true;
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[opRegistry] ack by entryId', entryId, id, op);
+      }
+    }
+  }
+  return matched;
+}
