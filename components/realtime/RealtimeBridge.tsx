@@ -105,6 +105,8 @@ export default function RealtimeBridge({
 
       let ignore = false;
 
+      const hadPending = clientOpId ? hasPendingOp(clientOpId) : false;
+
       // 1) Prefer op-id based matching (our optimistic plumbing)
       if (clientOpId && hasPendingOp(clientOpId)) {
         ignore = true;
@@ -121,7 +123,7 @@ export default function RealtimeBridge({
         channel,
         table,
         clientOpId,
-        matchedLocalOp: clientOpId ? hasPendingOp(clientOpId) : false,
+        matchedLocalOp: hadPending,
         ignore,
         payload,
       });
