@@ -38,7 +38,6 @@ import { deleteEntryAction } from '@/app/actions';
 import DataList from '@/components/primitives/DataList';
 import ListRow from '@/components/primitives/ListRow';
 import Grip from '@/components/icons/Grip';
-import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { useFormStatus } from 'react-dom';
 import { markLocalWrite } from '@/components/realtime/localWritePulse';
 import { registerPendingOp } from '@/components/realtime/opRegistry';
@@ -135,9 +134,12 @@ function useStickyBoolean(on: boolean, minOnMs = 250) {
 export default function EntriesList({
   entries,
   selectedYMD,
+  activeGoalKcal,
 }: {
   entries: Entry[];
   selectedYMD: string;
+  /** Optional kcal/day goal for this date (used for the summary line). */
+  activeGoalKcal?: number | null;
 }) {
   const [items, setItems] = useState(entries);
   const [saving, setSaving] = useState(false);
@@ -262,23 +264,58 @@ export default function EntriesList({
 
   const disableDnD = saving || isPending;
 
+  // Derive totals from the optimistic local items
+  const { totalPlanned, totalEaten } = items.reduce(
+    (acc, it) => {
+      if (it.status === 'planned') acc.totalPlanned += it.kcal_snapshot;
+      else if (it.status === 'eaten') acc.totalEaten += it.kcal_snapshot;
+      return acc;
+    },
+    { totalPlanned: 0, totalEaten: 0 }
+  );
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <SortableContext items={items.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-        <DataList>
-          {items.map((e) => (
-            <SortableEntry
-              key={e.id}
-              e={e}
-              selectedYMD={selectedYMD}
-              disabled={disableDnD}
-              onQtyOptimistic={applyQtyOptimistic}
-              onStatusOptimistic={applyStatusOptimistic}
-            />
-          ))}
-        </DataList>
-      </SortableContext>
-    </DndContext>
+    <>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={items.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+          <DataList>
+            {items.map((e) => (
+              <SortableEntry
+                key={e.id}
+                e={e}
+                selectedYMD={selectedYMD}
+                disabled={disableDnD}
+                onQtyOptimistic={applyQtyOptimistic}
+                onStatusOptimistic={applyStatusOptimistic}
+              />
+            ))}
+          </DataList>
+        </SortableContext>
+      </DndContext>
+
+      {/* Totals + optional goal, based on local optimistic state */}
+      <div className="space-y-1">
+        <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
+          <div>
+            <span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal
+          </div>
+          <div>
+            <span className="font-medium">Eaten:</span> {totalEaten.toFixed(2)} kcal
+          </div>
+          <div>
+            <span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(2)} kcal
+          </div>
+        </div>
+
+        {activeGoalKcal != null && (
+          <div className="text-sm flex items-center justify-end leading-tight">
+            Goal:&nbsp;
+            <span className="font-medium tabular-nums">{activeGoalKcal}</span>
+            &nbsp;kcal
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -434,7 +471,7 @@ function EntryDeleteForm({
         title="Delete entry"
         aria-label="Delete entry"
         confirmMessage="Delete this entry?"
-        withRefresh={250}
+        withRefresh={false}   // no auto router.refresh; EntriesList handles UI optimistically
       />
     </form>
   );
@@ -597,7 +634,6 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
         </>
       )}
       <FormPendingProbe onChange={onPendingChange} />
-      <RefreshOnActionComplete debounceMs={250} />
     </form>
   );
 });
@@ -696,7 +732,6 @@ function CheckboxStatusForm({
       />
 
       <FormPendingProbe onChange={onPendingChange} />
-      <RefreshOnActionComplete debounceMs={250} />
     </form>
   );
 }

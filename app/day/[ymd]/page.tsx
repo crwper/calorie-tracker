@@ -1,4 +1,5 @@
 // app/day/[ymd]/page.tsx
+// app/day/[ymd]/page.tsx
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -82,14 +83,6 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   const { data: orderedItems } = await supabase.rpc('get_catalog_items_usage_order');
   const chipItems = orderedItems ?? []; // let the picker limit what it shows
 
-  // Totals for the visible day (derived from the current server fetch)
-  const totalEaten = entries
-    .filter(e => e.status === 'eaten')
-    .reduce((sum, e) => sum + e.kcal_snapshot, 0);
-  const totalPlanned = entries
-    .filter(e => e.status === 'planned')
-    .reduce((sum, e) => sum + e.kcal_snapshot, 0);
-
   // Active goal for this day (latest start_date <= selectedYMD)
   const { data: goalRows } = await supabase
     .from('goals')
@@ -98,6 +91,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     .order('start_date', { ascending: false })
     .limit(1);
   const activeGoal = (goalRows ?? [])[0] ?? null;
+  const activeGoalKcal = activeGoal ? Number(activeGoal.kcal_target) : null;
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
@@ -138,29 +132,16 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
         </div>
       </section>
 
-      {/* Entries with totals at the bottom */}
+      {/* Entries with totals at the bottom (now inside EntriesList) */}
       <section className="space-y-2">
         <h2 className="font-semibold">Entries</h2>
         <div className="rounded-lg border bg-card p-4 space-y-3">
-          {/* Drag-and-drop list with optimistic updates */}
-          <EntriesList entries={entries} selectedYMD={selectedYMD} />
-
-          {/* NEW wrapper: only controls spacing between these two lines */}
-          <div className="space-y-1">
-            {entries.length > 0 && (
-              <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
-                <div><span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal</div>
-                <div><span className="font-medium">Eaten:</span> {totalEaten.toFixed(2)} kcal</div>
-                <div><span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(2)} kcal</div>
-              </div>
-            )}
-
-            {activeGoal && entries.length > 0 && (
-              <div className="text-sm flex items-center justify-end leading-tight">
-                Goal:&nbsp;<span className="font-medium tabular-nums">{activeGoal.kcal_target}</span>&nbsp;kcal
-              </div>
-            )}
-          </div>
+          {/* Drag-and-drop list with optimistic updates + totals */}
+          <EntriesList
+            entries={entries}
+            selectedYMD={selectedYMD}
+            activeGoalKcal={activeGoalKcal}
+          />
         </div>
       </section>
 
