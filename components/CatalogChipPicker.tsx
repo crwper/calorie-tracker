@@ -2,7 +2,6 @@
 'use client';
 
 import { useMemo, useState, useRef } from 'react';
-import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { registerPendingOp } from '@/components/realtime/opRegistry';
 import { emitEntryAdded, type Entry as DayEntry } from '@/components/EntriesList';
 
@@ -181,8 +180,6 @@ function CatalogChipForm({
           {Number(item.default_qty).toString()} {item.unit}
         </div>
       </button>
-      {/* Ensure the day view refreshes after adding (for now) */}
-      <RefreshOnActionComplete debounceMs={250} />
     </form>
   );
 }

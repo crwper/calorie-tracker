@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import {
   listPendingOps,
+  subscribeToPendingOps,
   type PendingOp,
 } from '@/components/realtime/opRegistry';
 
@@ -26,11 +27,11 @@ function PendingOpsDebugInner() {
     // Initial grab
     update();
 
-    // Poll every 250ms – simple and good enough for a dev widget
-    const id = window.setInterval(update, 250);
+    // Subscribe to registry changes
+    const unsubscribe = subscribeToPendingOps(update);
 
     return () => {
-      window.clearInterval(id);
+      unsubscribe();
     };
   }, []);
 

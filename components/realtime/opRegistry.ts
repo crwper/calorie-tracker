@@ -3,9 +3,7 @@
 
 export type OpKind =
   | 'add_from_catalog'
-  | 'add_manual'
   | 'update_qty'
-  | 'update_status'
   | 'update_qty_and_status'
   | 'delete'
   | 'reorder';
@@ -20,27 +18,27 @@ export type PendingOp = {
 
 const pending = new Map<string, PendingOp>();
 
-// Simple subscriber list so UI can react to registry changes
-type PendingListener = () => void;
-const listeners = new Set<PendingListener>();
+// Simple subscription mechanism so React hooks can listen for changes.
+const subscribers = new Set<() => void>();
 
-function notify() {
-  for (const fn of listeners) {
+function emitChange() {
+  for (const fn of subscribers) {
     try {
       fn();
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        // Avoid breaking all listeners because of one bad callback
-        console.error('[opRegistry] listener error', err);
-      }
+      console.error('[opRegistry] subscriber error', err);
     }
   }
 }
 
-export function subscribeToPending(listener: PendingListener): () => void {
-  listeners.add(listener);
+/**
+ * Subscribe to any change in the pending-op registry.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToPendingOps(listener: () => void): () => void {
+  subscribers.add(listener);
   return () => {
-    listeners.delete(listener);
+    subscribers.delete(listener);
   };
 }
 
@@ -49,16 +47,17 @@ export function registerPendingOp(op: PendingOp) {
   if (process.env.NODE_ENV !== 'production') {
     console.log('[opRegistry] register', op);
   }
-  notify();
+  emitChange();
 }
 
 export function ackOp(id: string) {
   const op = pending.get(id);
+  if (!op) return;
   pending.delete(id);
   if (process.env.NODE_ENV !== 'production') {
     console.log('[opRegistry] ack', id, op);
   }
-  notify();
+  emitChange();
 }
 
 export function hasPendingOp(id: string): boolean {
@@ -66,22 +65,24 @@ export function hasPendingOp(id: string): boolean {
 }
 
 /**
- * True if there is any pending op whose entryIds includes the given entry id.
+ * True if ANY pending op currently references this entry id.
  */
-export function hasPendingForEntry(entryId: string): boolean {
+export function hasPendingOpForEntry(entryId: string): boolean {
   for (const op of pending.values()) {
-    if (op.entryIds?.includes(entryId)) {
-      return true;
-    }
+    if (op.entryIds?.includes(entryId)) return true;
   }
   return false;
 }
 
-// Handy for future debugging
+// Handy for debugging
 export function listPendingOps(): PendingOp[] {
   return Array.from(pending.values());
 }
 
+/**
+ * Acknowledge and clear all ops that mention the given entry id.
+ * Returns true if we matched at least one op.
+ */
 export function ackOpByEntryId(entryId: string): boolean {
   let matched = false;
   for (const [id, op] of pending.entries()) {
@@ -94,7 +95,7 @@ export function ackOpByEntryId(entryId: string): boolean {
     }
   }
   if (matched) {
-    notify();
+    emitChange();
   }
   return matched;
 }
