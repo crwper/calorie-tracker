@@ -38,9 +38,12 @@ import { deleteEntryAction } from '@/app/actions';
 import DataList from '@/components/primitives/DataList';
 import ListRow from '@/components/primitives/ListRow';
 import Grip from '@/components/icons/Grip';
-import { useFormStatus } from 'react-dom';
 import { markLocalWrite } from '@/components/realtime/localWritePulse';
-import { registerPendingOp } from '@/components/realtime/opRegistry';
+import {
+  registerPendingOp,
+  subscribeToPending,
+  hasPendingForEntry,
+} from '@/components/realtime/opRegistry';
 
 export type Entry = {
   id: string;
@@ -104,20 +107,16 @@ function useDebouncedSubmit(delay = 600) {
   return { submit, cancel };
 }
 
-/* Probe pending state of the nearest <form> and lift it up */
-function FormPendingProbe({ onChange }: { onChange: (p: boolean) => void }) {
-  const { pending } = useFormStatus();
-  useEffect(() => onChange(pending), [pending, onChange]);
-  return null;
-}
-
 /* Keep indicator visible briefly after last pending turns false */
 function useStickyBoolean(on: boolean, minOnMs = 250) {
   const [vis, setVis] = useState(false);
   const timer = useRef<number | null>(null);
   useEffect(() => {
     if (on) {
-      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
       setVis(true);
     } else {
       if (timer.current) clearTimeout(timer.current);
@@ -126,9 +125,38 @@ function useStickyBoolean(on: boolean, minOnMs = 250) {
         timer.current = null;
       }, minOnMs);
     }
-    return () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+    return () => {
+      if (timer.current) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+    };
   }, [on, minOnMs]);
   return vis;
+}
+
+/**
+ * Track whether there is any pending op in the registry that touches this entry id.
+ * Used to drive row-level "Saving…" without wiring directly to useFormStatus.
+ */
+function useEntryPending(entryId: string): boolean {
+  const [pending, setPending] = useState(() => hasPendingForEntry(entryId));
+
+  useEffect(() => {
+    const update = () => {
+      setPending(hasPendingForEntry(entryId));
+    };
+
+    // Initial check in case something is already pending for this id.
+    update();
+
+    const unsubscribe = subscribeToPending(update);
+    return () => {
+      unsubscribe();
+    };
+  }, [entryId]);
+
+  return pending;
 }
 
 export default function EntriesList({
@@ -254,6 +282,10 @@ export default function EntriesList({
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, status: next } : it)));
   }
 
+  function handleEntryDeleted(id: string) {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+  }
+
   if (items.length === 0) {
     return (
       <DataList>
@@ -287,6 +319,7 @@ export default function EntriesList({
                 disabled={disableDnD}
                 onQtyOptimistic={applyQtyOptimistic}
                 onStatusOptimistic={applyStatusOptimistic}
+                onDeleteOptimistic={handleEntryDeleted}
               />
             ))}
           </DataList>
@@ -327,12 +360,14 @@ function SortableEntry({
   disabled,
   onQtyOptimistic,
   onStatusOptimistic,
+  onDeleteOptimistic,
 }: {
   e: Entry;
   selectedYMD: string;
   disabled?: boolean;
   onQtyOptimistic: (id: string, qty: number) => void;
   onStatusOptimistic: (id: string, next: 'planned' | 'eaten') => void;
+  onDeleteOptimistic: (id: string) => void;
 }) {
   const mounted = useIsMounted();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -344,9 +379,8 @@ function SortableEntry({
     opacity: isDragging ? 0.6 : 1,
   };
 
-  const [qtyPending, setQtyPending] = useState(false);
-  const [statusPending, setStatusPending] = useState(false);
-  const showSaving = useStickyBoolean(qtyPending || statusPending, 250);
+  const entryPending = useEntryPending(e.id);
+  const showSaving = useStickyBoolean(entryPending, 250);
 
   const qtyRef = useRef<AutoSaveQtyFormHandle | null>(null);
 
@@ -378,7 +412,6 @@ function SortableEntry({
               initialQtyStr={e.qty}
               getLatestQty={() => qtyRef.current?.getLatestQty() ?? null}
               onSubmitOptimistic={(next) => onStatusOptimistic(e.id, next)}
-              onPendingChange={setStatusPending}
               onPreSubmit={() => qtyRef.current?.cancelPending()}
             />
           </div>
@@ -403,7 +436,6 @@ function SortableEntry({
                 initialQty={e.qty}
                 selectedYMD={selectedYMD}
                 onQtyOptimistic={(q) => onQtyOptimistic(e.id, q)}
-                onPendingChange={setQtyPending}
                 readOnly={e.status === 'eaten'}
               />
             </div>
@@ -425,6 +457,7 @@ function SortableEntry({
         <EntryDeleteForm
           entryId={e.id}
           selectedYMD={selectedYMD}
+          onDeleted={() => onDeleteOptimistic(e.id)}
         />
       }
     />
@@ -434,9 +467,11 @@ function SortableEntry({
 function EntryDeleteForm({
   entryId,
   selectedYMD,
+  onDeleted,
 }: {
   entryId: string;
   selectedYMD: string;
+  onDeleted: () => void;
 }) {
   const clientOpInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -452,6 +487,9 @@ function EntryDeleteForm({
       entryIds: [entryId],
       startedAt: Date.now(),
     });
+
+    // Remove the row optimistically from local state.
+    onDeleted();
     // no preventDefault: we want the submission to go ahead
   };
 
@@ -491,10 +529,9 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   initialQty: string;
   selectedYMD: string;
   onQtyOptimistic: (qty: number) => void;
-  onPendingChange: (p: boolean) => void;
   readOnly?: boolean;
 }>(function AutoSaveQtyForm(
-  { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, onPendingChange, readOnly = false },
+  { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, readOnly = false },
   ref
 ) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -506,11 +543,6 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   useEffect(() => {
     setVal(initialQty);
   }, [initialQty]);
-
-  // Safety: if this form ever unmounts, clear pending state so the row indicator can't stick
-  useEffect(() => {
-    return () => onPendingChange(false);
-  }, [onPendingChange]);
 
   // make it stable
   const parseQty = useCallback((v: string): number | null => {
@@ -633,7 +665,6 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
           <span>{unit}</span>
         </>
       )}
-      <FormPendingProbe onChange={onPendingChange} />
     </form>
   );
 });
@@ -646,7 +677,6 @@ function CheckboxStatusForm({
   initialQtyStr,
   getLatestQty,
   onSubmitOptimistic,
-  onPendingChange,
   onPreSubmit,
 }: {
   entryId: string;
@@ -657,7 +687,6 @@ function CheckboxStatusForm({
   /** read the latest typed qty from the sibling qty editor */
   getLatestQty?: () => number | null;
   onSubmitOptimistic: (next: 'planned' | 'eaten') => void;
-  onPendingChange: (p: boolean) => void;
   onPreSubmit: () => void; // flush qty before toggling
 }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -730,8 +759,6 @@ function CheckboxStatusForm({
           formRef.current?.requestSubmit();
         }}
       />
-
-      <FormPendingProbe onChange={onPendingChange} />
     </form>
   );
 }

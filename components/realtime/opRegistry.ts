@@ -20,11 +20,36 @@ export type PendingOp = {
 
 const pending = new Map<string, PendingOp>();
 
+// Simple subscriber list so UI can react to registry changes
+type PendingListener = () => void;
+const listeners = new Set<PendingListener>();
+
+function notify() {
+  for (const fn of listeners) {
+    try {
+      fn();
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        // Avoid breaking all listeners because of one bad callback
+        console.error('[opRegistry] listener error', err);
+      }
+    }
+  }
+}
+
+export function subscribeToPending(listener: PendingListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export function registerPendingOp(op: PendingOp) {
   pending.set(op.id, op);
   if (process.env.NODE_ENV !== 'production') {
     console.log('[opRegistry] register', op);
   }
+  notify();
 }
 
 export function ackOp(id: string) {
@@ -33,10 +58,23 @@ export function ackOp(id: string) {
   if (process.env.NODE_ENV !== 'production') {
     console.log('[opRegistry] ack', id, op);
   }
+  notify();
 }
 
 export function hasPendingOp(id: string): boolean {
   return pending.has(id);
+}
+
+/**
+ * True if there is any pending op whose entryIds includes the given entry id.
+ */
+export function hasPendingForEntry(entryId: string): boolean {
+  for (const op of pending.values()) {
+    if (op.entryIds?.includes(entryId)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Handy for future debugging
@@ -54,6 +92,9 @@ export function ackOpByEntryId(entryId: string): boolean {
         console.log('[opRegistry] ack by entryId', entryId, id, op);
       }
     }
+  }
+  if (matched) {
+    notify();
   }
   return matched;
 }
