@@ -83,12 +83,15 @@ export default async function ChartsPage() {
   // after you’ve loaded the data:
   const dailyArray: DailyRow[] = Array.isArray(daily) ? daily : [];
 
-  const dailyWithGoal = dailyArray.map(d => ({
-    t: toUTCms(d.date),
-    total: Number(d.total_kcal),
-    goal: activeGoal(d.date),
-    ymd: d.date,
-  }));
+  const dailyWithGoal = dailyArray
+    .map(d => ({
+      t: toUTCms(d.date),
+      total: Number(d.total_kcal),
+      goal: activeGoal(d.date),
+      ymd: d.date,
+    }))
+    // Ignore days that have a day row but no calories logged.
+    .filter(d => d.total > 0);
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
