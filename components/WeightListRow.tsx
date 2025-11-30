@@ -30,7 +30,7 @@ export default function WeightListRow({ w }: { w: Weight }) {
           </div>
           <div className="flex items-center justify-end">
             <div className="text-sm font-medium tabular-nums">
-              {kg.toFixed(2)} kg
+              {kg.toFixed(1)} kg
             </div>
           </div>
         </div>

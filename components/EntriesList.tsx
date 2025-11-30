@@ -287,20 +287,20 @@ export default function EntriesList({
       <div className="space-y-1">
         <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
           <div>
-            <span className="font-medium">Planned:</span> {totalPlanned.toFixed(2)} kcal
+            <span className="font-medium">Planned:</span> {totalPlanned.toFixed(0)} kcal
           </div>
           <div>
-            <span className="font-medium">Eaten:</span> {totalEaten.toFixed(2)} kcal
+            <span className="font-medium">Eaten:</span> {totalEaten.toFixed(0)} kcal
           </div>
           <div>
-            <span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(2)} kcal
+            <span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(0)} kcal
           </div>
         </div>
 
         {activeGoalKcal != null && (
           <div className="text-sm flex items-center justify-end leading-tight">
             Goal:&nbsp;
-            <span className="font-medium tabular-nums">{activeGoalKcal}</span>
+            <span className="font-medium tabular-nums">{activeGoalKcal.toFixed(0)}</span>
             &nbsp;kcal
           </div>
         )}
@@ -380,7 +380,7 @@ function SortableEntry({
 
           {/* Row 1 / Col 3: kcal */}
           <div className="col-[3/4] row-[1/2] flex items-center justify-end">
-            <div className="text-sm">{Number(e.kcal_snapshot).toFixed(2)} kcal</div>
+            <div className="text-sm">{Number(e.kcal_snapshot).toFixed(0)} kcal</div>
           </div>
 
           {/* Row 2 / Col 2: qty editor */}
