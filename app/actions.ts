@@ -1,7 +1,6 @@
 // app/actions.ts
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { todayYMDVancouver, isValidYMD } from '@/lib/dates';
 
@@ -36,7 +35,6 @@ export async function toggleEntryStatusAction(formData: FormData) {
     .eq('id', entryId);
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function deleteEntryAction(formData: FormData) {
@@ -63,8 +61,6 @@ export async function deleteEntryAction(formData: FormData) {
     p_client_op_id: opId,
   });
   if (error) throw new Error(error.message);
-
-  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function updateEntryQtyAndStatusAction(formData: FormData) {
@@ -96,8 +92,6 @@ export async function updateEntryQtyAndStatusAction(formData: FormData) {
     p_client_op_id: opId,
   });
   if (error) throw new Error(error.message);
-
-  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function addEntryFromCatalogAction(formData: FormData) {
@@ -160,8 +154,6 @@ export async function addEntryFromCatalogAction(formData: FormData) {
     p_id: entryId,
   });
   if (insErr) throw new Error(insErr.message);
-
-  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function updateEntryQtyAction(formData: FormData) {
@@ -217,7 +209,6 @@ export async function updateEntryQtyAction(formData: FormData) {
     .eq('id', entryId);
 
   if (updErr) throw new Error(updErr.message);
-  revalidatePath(`/day/${dayDate}`);
 }
 
 export async function reorderEntriesAction(input: {
@@ -239,8 +230,7 @@ export async function reorderEntriesAction(input: {
     .maybeSingle();
 
   if (!day) {
-    // nothing to reorder (or stale client); just revalidate
-    revalidatePath(`/day/${dayDate}`);
+    // nothing to reorder (or stale client); just return
     return;
   }
 
@@ -257,6 +247,4 @@ export async function reorderEntriesAction(input: {
   });
   
   if (error) throw new Error(error.message);
-
-  revalidatePath(`/day/${dayDate}`);
 }
