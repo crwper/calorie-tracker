@@ -14,10 +14,6 @@ export async function toggleEntryStatusAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
-  // Selected day for revalidation
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
-
   const entryId = String(formData.get('entry_id') ?? '');
   const nextStatus = String(formData.get('next_status') ?? 'planned');
   if (!entryId) throw new Error('Missing entry_id');
@@ -42,10 +38,6 @@ export async function deleteEntryAction(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
-  // Selected day for revalidation
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
-
   const entryId = String(formData.get('entry_id') ?? '');
   if (!entryId) throw new Error('Missing entry_id');
 
@@ -67,9 +59,6 @@ export async function updateEntryQtyAndStatusAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
-
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
 
   const entryId = String(formData.get('entry_id') ?? '');
   const nextStatus = String(formData.get('next_status') ?? 'planned');
@@ -160,10 +149,6 @@ export async function updateEntryQtyAction(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
-
-  // Selected day for revalidation
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
 
   const entryId = String(formData.get('entry_id') ?? '');
   const qty = Number(formData.get('qty') ?? '0');

@@ -68,19 +68,26 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     status: 'planned' | 'eaten';
     created_at: string;
     kcal_per_unit_snapshot: number | null;
-    ordering: number | null;
-  }> = (entriesData ?? []).map((e) => ({
-    ...e,
-    kcal_snapshot: Number(e.kcal_snapshot ?? 0),
-    kcal_per_unit_snapshot:
-      (e as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot != null
-        ? Number((e as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot)
-        : null,
-    ordering:
-      (e as { ordering?: unknown }).ordering != null
-        ? Number((e as { ordering?: unknown }).ordering)
-        : null,
-  }));
+    ordering?: number;
+  }> = (entriesData ?? []).map((e) => {
+    const rawOrdering = (e as { ordering?: unknown }).ordering;
+    const ordering =
+      typeof rawOrdering === 'number'
+        ? rawOrdering
+        : rawOrdering != null
+        ? Number(rawOrdering)
+        : undefined;
+
+    return {
+      ...e,
+      kcal_snapshot: Number(e.kcal_snapshot ?? 0),
+      kcal_per_unit_snapshot:
+        (e as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot != null
+          ? Number((e as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot)
+          : null,
+      ordering: Number.isFinite(ordering as number) ? (ordering as number) : undefined,
+    };
+  });
 
   // Ordered by: last used date desc, then first appearance that day asc,
   // then name asc for never-used items.
@@ -175,7 +182,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
       {/* Realtime: scoped to this day; drives fully optimistic updates */}
       <DayEntriesRealtime dayId={dayIdStr} />
 
-      {/* Dev‑only pending op‑id overlay */}
+      {/* Dev-only pending op-id overlay */}
       {process.env.NODE_ENV !== 'production' ? <PendingOpsDebug /> : null}
     </main>
   );
