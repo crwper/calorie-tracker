@@ -40,6 +40,7 @@ import Grip from '@/components/icons/Grip';
 import {
   registerPendingOp,
   hasPendingOpForEntry,
+  hasSavingOpForEntry,
   subscribeToPendingOps,
   ackOp,
 } from '@/components/realtime/opRegistry';
@@ -141,7 +142,7 @@ function useDebouncedSubmit(delay = 600) {
 function useEntrySaving(entryId: string, minOnMs = 250): boolean {
   const rawSaving = useSyncExternalStore(
     subscribeToPendingOps,
-    () => hasPendingOpForEntry(entryId),
+    () => hasSavingOpForEntry(entryId),
     () => false
   );
   return useStickyBoolean(rawSaving, minOnMs);
@@ -239,7 +240,7 @@ export default function EntriesList({
     useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
   );
 
-  async function persistOrder(next: Entry[], prev: Entry[]) {
+  async function persistOrder(next: Entry[], prev: Entry[], movedEntryId: string) {
     const opId = crypto.randomUUID();
     try {
       setSaving(true);
@@ -247,7 +248,8 @@ export default function EntriesList({
       registerPendingOp({
         id: opId,
         kind: 'reorder',
-        entryIds: next.map((e) => e.id),
+        entryIds: next.map((e) => e.id),   // all rows touched in the DB
+        savingEntryIds: [movedEntryId],    // ONLY this row shows "Saving…"
         startedAt: Date.now(),
       });
 
@@ -257,11 +259,10 @@ export default function EntriesList({
         client_op_id: opId,
       });
 
-      // No router.refresh here – rely on optimistic state + Realtime ack
+      // still no router.refresh; rely on optimistic + Realtime
     } catch (err) {
       console.error(err);
-      // This op definitely failed; clear it out so "Saving…" can't get stuck
-      ackOp(opId);
+      ackOp(opId);     // clear op so nothing gets stuck
       setItems(prev);
       alert('Reorder failed. Please try again.');
     } finally {
@@ -282,7 +283,9 @@ export default function EntriesList({
     const next = reordered.map((e, idx) => ({ ...e, ordering: idx }));
 
     setItems(next);
-    void persistOrder(next, prev);
+
+    const movedEntryId = String(active.id); // dnd-kit id = your entry id
+    void persistOrder(next, prev, movedEntryId);
   }
 
   function applyQtyOptimistic(id: string, newQty: number) {

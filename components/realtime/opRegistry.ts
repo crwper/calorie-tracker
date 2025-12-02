@@ -11,8 +11,11 @@ export type OpKind =
 export type PendingOp = {
   id: string;
   kind: OpKind;
-  // Optional metadata we can extend later
+  // Entries this op actually touches in the DB (used by Realtime ignore logic)
   entryIds?: string[];
+  // Optional subset of entries that should show a "Saving…" indicator.
+  // If omitted, we fall back to entryIds.
+  savingEntryIds?: string[];
   startedAt: number;
 };
 
@@ -70,6 +73,14 @@ export function hasPendingOp(id: string): boolean {
 export function hasPendingOpForEntry(entryId: string): boolean {
   for (const op of pending.values()) {
     if (op.entryIds?.includes(entryId)) return true;
+  }
+  return false;
+}
+
+export function hasSavingOpForEntry(entryId: string): boolean {
+  for (const op of pending.values()) {
+    const ids = op.savingEntryIds ?? op.entryIds;
+    if (ids?.includes(entryId)) return true;
   }
   return false;
 }
