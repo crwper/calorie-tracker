@@ -7,6 +7,10 @@ import ListRow from '@/components/primitives/ListRow';
 import DeleteButton from '@/components/primitives/DeleteButton';
 import { deleteCatalogItemAction } from '@/app/catalog/actions';
 import { useFormStatus } from 'react-dom';
+import {
+  CatalogItemFields,
+  type CatalogItemFieldsProps,
+} from '@/components/CatalogAddForm';
 
 type Item = {
   id: string;
@@ -19,15 +23,18 @@ type Item = {
 
 function initialLabelQtyForUnit(unit: string): number {
   const u = unit.trim().toLowerCase();
-  if (u === 'g' || u === 'gram' || u === 'grams' || u === 'ml' || u === 'milliliter' || u === 'milliliters' || u === 'millilitre') {
+  if (
+    u === 'g' ||
+    u === 'gram' ||
+    u === 'grams' ||
+    u === 'ml' ||
+    u === 'milliliter' ||
+    u === 'milliliters' ||
+    u === 'millilitre'
+  ) {
     return 100;
   }
   return 1;
-}
-
-function numOrNull(s: string): number | null {
-  const n = parseFloat(s);
-  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export default function CatalogRow({
@@ -90,7 +97,13 @@ function ViewRow({
             <div className="font-medium">{item.name}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {defaultQty.toString()} {item.unit} · {perUnit} kcal/{item.unit}
-              {approxKcal ? <> &nbsp;≈&nbsp;<span className="tabular-nums">{approxKcal}</span> kcal</> : null}
+              {approxKcal ? (
+                <>
+                  {' '}
+                  &nbsp;≈&nbsp;
+                  <span className="tabular-nums">{approxKcal}</span> kcal
+                </>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center justify-end">
@@ -109,7 +122,13 @@ function ViewRow({
             title="Edit item"
             className="inline-flex h-7 w-7 items-center justify-center hover:bg-control-hover focus:outline-none focus:ring-2 focus:ring-control-ring rounded"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="h-4 w-4"
+            >
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
             </svg>
@@ -143,6 +162,28 @@ function PendingWatcher({ onSettled }: { onSettled: () => void }) {
   return null;
 }
 
+function buildInitialFields(item: Item): CatalogItemFieldsProps {
+  const perUnit = Number(item.kcal_per_unit ?? 0);
+  const defaultQty = Number(item.default_qty ?? 0);
+
+  // Choose a convenient label amount (1 for most units, 100 for g/ml).
+  const labelAmount = initialLabelQtyForUnit(item.unit);
+  const labelKcal =
+    Number.isFinite(perUnit * labelAmount) && perUnit > 0
+      ? (perUnit * labelAmount).toFixed(2)
+      : '';
+
+  const defaultQtyStr = defaultQty > 0 ? defaultQty.toString() : '';
+
+  return {
+    initialName: item.name,
+    initialUnit: item.unit,
+    initialLabelAmount: labelAmount.toString(),
+    initialLabelKcal: labelKcal,
+    initialDefaultQty: defaultQtyStr,
+  };
+}
+
 function EditRow({
   item,
   updateAction,
@@ -155,109 +196,20 @@ function EditRow({
   onCancel: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-
-  const [name, setName] = useState(item.name);
-  const [unit, setUnit] = useState(item.unit);
-
-  const initialQty = initialLabelQtyForUnit(item.unit);
-  const [labelQty, setLabelQty] = useState<string>(() => String(initialQty));
-  const [labelKcal, setLabelKcal] = useState<string>(() => {
-    const per = Number(item.kcal_per_unit ?? 0);
-    const k = per * initialQty;
-    if (!Number.isFinite(k) || k <= 0) return '';
-    return String(Number(k.toFixed(2)));
-  });
-  const [defaultQty, setDefaultQty] = useState<string>(() =>
-    String(item.default_qty ?? '')
-  );
-
-  const labelKcalNum = numOrNull(labelKcal);
-  const labelQtyNum = numOrNull(labelQty);
-  const perUnit =
-    labelKcalNum != null && labelQtyNum != null ? labelKcalNum / labelQtyNum : null;
-
-  const defaultQtyNum = numOrNull(defaultQty);
-  const servingKcal =
-    perUnit != null && defaultQtyNum != null ? perUnit * defaultQtyNum : null;
-
-  const unitLabel = unit || 'unit';
+  const initialFields = buildInitialFields(item);
 
   return (
     <form
       ref={formRef}
       action={updateAction}
-      className="grid grid-cols-[2fr_1fr] gap-2 items-end"
+      className="space-y-3 rounded-lg border bg-card p-3"
     >
       <input type="hidden" name="id" value={item.id} />
 
-      <div>
-        <label className="text-xs text-muted-foreground">Name</label>
-        <input
-          name="name"
-          value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
-          className="w-full min-w-0 border rounded px-2 py-1 text-sm"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">Unit</label>
-        <input
-          name="unit"
-          value={unit}
-          onChange={(e) => setUnit(e.currentTarget.value)}
-          className="w-full border rounded px-2 py-1 text-sm"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">
-          Calories in this amount
-        </label>
-        <input
-          name="label_kcal"
-          type="number"
-          step="any"
-          min="0"
-          inputMode="decimal"
-          value={labelKcal}
-          onChange={(e) => setLabelKcal(e.currentTarget.value)}
-          className="w-full border rounded px-2 py-1 text-sm"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">
-          Amount (in your unit)
-        </label>
-        <input
-          name="label_qty"
-          type="number"
-          step="any"
-          min="0"
-          inputMode="decimal"
-          value={labelQty}
-          onChange={(e) => setLabelQty(e.currentTarget.value)}
-          className="w-full border rounded px-2 py-1 text-sm"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">Default serving</label>
-        <input
-          name="default_qty"
-          type="number"
-          step="any"
-          min="0"
-          inputMode="decimal"
-          value={defaultQty}
-          onChange={(e) => setDefaultQty(e.currentTarget.value)}
-          className="w-full border rounded px-2 py-1 text-sm"
-        />
-      </div>
+      <CatalogItemFields {...initialFields} />
 
       {/* Row: Save + Cancel */}
-      <div className="col-span-2 flex items-center justify-end gap-1 pt-1">
+      <div className="flex items-center justify-end gap-1 pt-1">
         <button
           type="submit"
           className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
@@ -277,34 +229,6 @@ function EditRow({
         >
           Cancel
         </button>
-      </div>
-
-      {/* Preview */}
-      <div className="col-span-2 text-xs text-muted-foreground">
-        {perUnit != null ? (
-          <>
-            1 {unitLabel} ≈{' '}
-            <span className="tabular-nums">
-              {perUnit.toFixed(2)}
-            </span>{' '}
-            kcal
-            {servingKcal != null && (
-              <>
-                {' · '}Default:{' '}
-                <span className="tabular-nums">
-                  {defaultQtyNum?.toFixed(2)}
-                </span>{' '}
-                {unitLabel} ≈{' '}
-                <span className="tabular-nums">
-                  {servingKcal.toFixed(0)}
-                </span>{' '}
-                kcal
-              </>
-            )}
-          </>
-        ) : (
-          <span>Enter calories and amount to see a preview.</span>
-        )}
       </div>
 
       {/* Refresh page data on action settle + leave edit mode */}
