@@ -13,7 +13,7 @@ import { addEntryFromCatalogAction } from '@/app/actions';
 import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
 import RefreshNowButton from '@/components/dev/RefreshNowButton';
-import RealtimeBridge from '@/components/realtime/RealtimeBridge';
+import DayEntriesRealtime from '@/components/realtime/DayEntriesRealtime';
 import PendingOpsDebug from '@/components/realtime/PendingOpsDebug';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
@@ -55,7 +55,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   // Fetch this day's entries
   const { data: entriesData } = await supabase
     .from('entries')
-    .select('id, name, qty, unit, kcal_snapshot, kcal_per_unit_snapshot, status, created_at')
+    .select('id, name, qty, unit, kcal_snapshot, status, created_at')
     .eq('day_id', dayIdStr)
     .order('ordering', { ascending: true });
 
@@ -72,7 +72,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     ...e,
     kcal_snapshot: Number(e.kcal_snapshot ?? 0),
     kcal_per_unit_snapshot:
-      e.kcal_per_unit_snapshot != null ? Number(e.kcal_per_unit_snapshot) : null,
+      (e as any).kcal_per_unit_snapshot != null
+        ? Number((e as any).kcal_per_unit_snapshot)
+        : null,
   }));
 
   // Ordered by: last used date desc, then first appearance that day asc,
@@ -165,16 +167,8 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
 
       <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
 
-      {/* Realtime: scoped to this day */}
-      <RealtimeBridge
-        channel={`rt-entries-day-${dayIdStr}`}
-        table="entries"
-        // Scope strictly to this day; RLS keeps it user-scoped
-        filter={`day_id=eq.${dayIdStr}`}
-        debounceMs={250}
-        ignoreLocalWritesTTL={400}
-        devLabel="Day entries"
-      />
+      {/* Realtime: scoped to this day (client-first, no router.refresh) */}
+      <DayEntriesRealtime dayId={dayIdStr} />
 
       {/* Dev‑only pending op‑id overlay */}
       {process.env.NODE_ENV !== 'production' ? <PendingOpsDebug /> : null}

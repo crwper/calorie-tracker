@@ -44,6 +44,10 @@ import {
   ackOp,
 } from '@/components/realtime/opRegistry';
 import useStickyBoolean from '@/hooks/useStickyBoolean';
+import {
+  subscribeToDayEntryRemoteEvents,
+  type DayEntryRemoteEvent,
+} from '@/components/realtime/dayEntriesEvents';
 
 export type Entry = {
   id: string;
@@ -141,6 +145,41 @@ export default function EntriesList({
     const unsubscribe = subscribeToEntryAdds((entry) => {
       setItems((prev) => [...prev, entry]);
     });
+    return unsubscribe;
+  }, []);
+
+  // Remote changes from other tabs/devices (via DayEntriesRealtime)
+  useEffect(() => {
+    const unsubscribe = subscribeToDayEntryRemoteEvents(
+      (ev: DayEntryRemoteEvent) => {
+        setItems((prev) => {
+          switch (ev.type) {
+            case 'insert': {
+              const e = ev.entry;
+              const idx = prev.findIndex((p) => p.id === e.id);
+              if (idx === -1) {
+                return [...prev, e];
+              }
+              return prev.map((p) => (p.id === e.id ? { ...p, ...e } : p));
+            }
+            case 'update': {
+              const e = ev.entry;
+              const idx = prev.findIndex((p) => p.id === e.id);
+              if (idx === -1) {
+                return [...prev, e];
+              }
+              return prev.map((p) => (p.id === e.id ? { ...p, ...e } : p));
+            }
+            case 'delete': {
+              return prev.filter((p) => p.id !== ev.entryId);
+            }
+            default:
+              return prev;
+          }
+        });
+      }
+    );
+
     return unsubscribe;
   }, []);
 
