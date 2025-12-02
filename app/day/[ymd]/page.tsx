@@ -55,7 +55,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   // Fetch this day's entries
   const { data: entriesData } = await supabase
     .from('entries')
-    .select('id, name, qty, unit, kcal_snapshot, status, created_at')
+    .select('id, name, qty, unit, kcal_snapshot, status, created_at, ordering, kcal_per_unit_snapshot')
     .eq('day_id', dayIdStr)
     .order('ordering', { ascending: true });
 
@@ -68,12 +68,17 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     status: 'planned' | 'eaten';
     created_at: string;
     kcal_per_unit_snapshot: number | null;
+    ordering: number | null;
   }> = (entriesData ?? []).map((e) => ({
     ...e,
     kcal_snapshot: Number(e.kcal_snapshot ?? 0),
     kcal_per_unit_snapshot:
-      (e as any).kcal_per_unit_snapshot != null
-        ? Number((e as any).kcal_per_unit_snapshot)
+      (e as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot != null
+        ? Number((e as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot)
+        : null,
+    ordering:
+      (e as { ordering?: unknown }).ordering != null
+        ? Number((e as { ordering?: unknown }).ordering)
         : null,
   }));
 
@@ -167,7 +172,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
 
       <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
 
-      {/* Realtime: scoped to this day (client-first, no router.refresh) */}
+      {/* Realtime: scoped to this day; drives fully optimistic updates */}
       <DayEntriesRealtime dayId={dayIdStr} />
 
       {/* Dev‑only pending op‑id overlay */}

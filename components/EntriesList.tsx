@@ -54,6 +54,8 @@ export type Entry = {
   status: 'planned' | 'eaten';
   created_at: string;
   kcal_per_unit_snapshot?: number | null;
+  /** Server-side position within the day (0-based). */
+  ordering?: number;
 };
 
 type EntryAddedListener = (entry: Entry) => void;
@@ -145,6 +147,30 @@ function useEntrySaving(entryId: string, minOnMs = 250): boolean {
   return useStickyBoolean(rawSaving, minOnMs);
 }
 
+/** Helper: consistently sort entries by ordering (if present). */
+function sortByOrdering(entries: Entry[]): Entry[] {
+  if (!entries.length) return entries;
+  const anyOrdering = entries.some(
+    (e) => typeof e.ordering === 'number' && Number.isFinite(e.ordering)
+  );
+  if (!anyOrdering) return entries;
+  const copy = [...entries];
+  copy.sort((a, b) => {
+    const ao =
+      typeof a.ordering === 'number' && Number.isFinite(a.ordering)
+        ? (a.ordering as number)
+        : Number.MAX_SAFE_INTEGER;
+    const bo =
+      typeof b.ordering === 'number' && Number.isFinite(b.ordering)
+        ? (b.ordering as number)
+        : Number.MAX_SAFE_INTEGER;
+    if (ao !== bo) return ao - bo;
+    // stable-ish fallback: created_at
+    return a.created_at.localeCompare(b.created_at);
+  });
+  return copy;
+}
+
 export default function EntriesList({
   entries,
   selectedYMD,
@@ -155,11 +181,11 @@ export default function EntriesList({
   /** Optional kcal/day goal for this date (used for the summary line). */
   activeGoalKcal?: number | null;
 }) {
-  const [items, setItems] = useState(entries);
+  const [items, setItems] = useState<Entry[]>(sortByOrdering(entries));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setItems(entries);
+    setItems(sortByOrdering(entries));
   }, [entries]);
 
   useEffect(() => {
@@ -177,25 +203,29 @@ export default function EntriesList({
           case 'insert': {
             const exists = prev.some((e) => e.id === change.entry.id);
             if (exists) {
-              // If we somehow already have it, treat as an update.
-              return prev.map((e) =>
+              const updated = prev.map((e) =>
                 e.id === change.entry.id ? { ...e, ...change.entry } : e
               );
+              return sortByOrdering(updated);
             }
-            return [...prev, change.entry];
+            const appended = [...prev, change.entry];
+            return sortByOrdering(appended);
           }
           case 'update': {
             const exists = prev.some((e) => e.id === change.entry.id);
             if (!exists) {
-              // Late join: if we don't have it yet, append.
-              return [...prev, change.entry];
+              const appended = [...prev, change.entry];
+              return sortByOrdering(appended);
             }
-            return prev.map((e) =>
+            const updated = prev.map((e) =>
               e.id === change.entry.id ? { ...e, ...change.entry } : e
             );
+            return sortByOrdering(updated);
           }
-          case 'delete':
-            return prev.filter((e) => e.id !== change.id);
+          case 'delete': {
+            const filtered = prev.filter((e) => e.id !== change.id);
+            return filtered;
+          }
           default:
             return prev;
         }
@@ -248,7 +278,8 @@ export default function EntriesList({
     if (oldIndex === -1 || newIndex === -1) return;
 
     const prev = items;
-    const next = arrayMove(items, oldIndex, newIndex);
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    const next = reordered.map((e, idx) => ({ ...e, ordering: idx }));
 
     setItems(next);
     void persistOrder(next, prev);

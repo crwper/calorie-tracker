@@ -32,11 +32,11 @@ function rowToEntry(row: RowWithClientOpId): Entry | null {
 
   const name =
     typeof (row as { name?: unknown }).name === 'string'
-      ? (row as { name?: unknown }).name as string
+      ? ((row as { name?: unknown }).name as string)
       : '';
   const unit =
     typeof (row as { unit?: unknown }).unit === 'string'
-      ? (row as { unit?: unknown }).unit as string
+      ? ((row as { unit?: unknown }).unit as string)
       : '';
 
   const qtyRaw = (row as { qty?: unknown }).qty;
@@ -44,6 +44,7 @@ function rowToEntry(row: RowWithClientOpId): Entry | null {
   const statusRaw = (row as { status?: unknown }).status;
   const createdRaw = (row as { created_at?: unknown }).created_at;
   const kpuRaw = (row as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot;
+  const orderingRaw = (row as { ordering?: unknown }).ordering;
 
   const qtyNum =
     typeof qtyRaw === 'number'
@@ -75,7 +76,15 @@ function rowToEntry(row: RowWithClientOpId): Entry | null {
       ? kpuRaw
       : Number(kpuRaw);
 
-  return {
+  let ordering: number | undefined;
+  if (typeof orderingRaw === 'number') {
+    ordering = orderingRaw;
+  } else if (orderingRaw != null) {
+    const o = Number(orderingRaw);
+    if (Number.isFinite(o)) ordering = o;
+  }
+
+  const base: Entry = {
     id,
     name,
     unit,
@@ -85,6 +94,8 @@ function rowToEntry(row: RowWithClientOpId): Entry | null {
     created_at: createdAt,
     kcal_per_unit_snapshot: kpuNum,
   };
+
+  return ordering != null ? { ...base, ordering } : base;
 }
 
 export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
