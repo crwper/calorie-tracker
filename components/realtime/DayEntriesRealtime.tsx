@@ -8,10 +8,8 @@ import {
   ackOp,
   ackOpByEntryId,
 } from '@/components/realtime/opRegistry';
-import {
-  emitDayEntryRemoteEvent,
-  type RemoteEntry,
-} from '@/components/realtime/dayEntriesEvents';
+import type { Entry } from '@/components/EntriesList';
+import { emitEntryRealtimeChange } from '@/components/EntriesList';
 
 type RtState = 'idle' | 'connecting' | 'live' | 'error';
 type PostgresEvent = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -28,52 +26,64 @@ type RtChangePayload = {
   old: RowWithClientOpId | null;
 };
 
-function mapRowToRemoteEntry(row: RowWithClientOpId | null): RemoteEntry | null {
-  if (!row) return null;
-
-  const idValue = row.id;
-  const id =
-    typeof idValue === 'string'
-      ? idValue
-      : idValue != null
-      ? String(idValue)
-      : null;
-
+function rowToEntry(row: RowWithClientOpId): Entry | null {
+  const id = typeof row.id === 'string' ? row.id : null;
   if (!id) return null;
 
-  const nameRaw = (row as any).name;
   const name =
-    typeof nameRaw === 'string' ? nameRaw : String(nameRaw ?? '').trim();
-  if (!name) return null;
+    typeof (row as { name?: unknown }).name === 'string'
+      ? (row as { name?: unknown }).name as string
+      : '';
+  const unit =
+    typeof (row as { unit?: unknown }).unit === 'string'
+      ? (row as { unit?: unknown }).unit as string
+      : '';
 
-  const qtyRaw = (row as any).qty;
-  const unitRaw = (row as any).unit;
-  const kcalRaw = (row as any).kcal_snapshot;
-  const statusRaw = (row as any).status;
-  const createdRaw = (row as any).created_at;
-  const perUnitRaw = (row as any).kcal_per_unit_snapshot;
+  const qtyRaw = (row as { qty?: unknown }).qty;
+  const kcalRaw = (row as { kcal_snapshot?: unknown }).kcal_snapshot;
+  const statusRaw = (row as { status?: unknown }).status;
+  const createdRaw = (row as { created_at?: unknown }).created_at;
+  const kpuRaw = (row as { kcal_per_unit_snapshot?: unknown }).kcal_per_unit_snapshot;
 
-  const qty = String(qtyRaw ?? '');
-  const unit = typeof unitRaw === 'string' ? unitRaw : String(unitRaw ?? '');
-  const kcal_snapshot = Number(kcalRaw ?? 0);
-  const created_at =
+  const qtyNum =
+    typeof qtyRaw === 'number'
+      ? qtyRaw
+      : qtyRaw != null
+      ? Number(qtyRaw)
+      : NaN;
+  const qtyStr = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum.toString() : '0';
+
+  const kcalNum =
+    typeof kcalRaw === 'number'
+      ? kcalRaw
+      : kcalRaw != null
+      ? Number(kcalRaw)
+      : 0;
+
+  const status: 'planned' | 'eaten' =
+    statusRaw === 'eaten' ? 'eaten' : 'planned';
+
+  const createdAt =
     typeof createdRaw === 'string'
       ? createdRaw
       : new Date().toISOString();
-  const kcal_per_unit_snapshot =
-    perUnitRaw != null ? Number(perUnitRaw) : null;
 
-  const status = statusRaw === 'eaten' ? 'eaten' : 'planned';
+  const kpuNum =
+    kpuRaw == null
+      ? null
+      : typeof kpuRaw === 'number'
+      ? kpuRaw
+      : Number(kpuRaw);
 
   return {
     id,
     name,
-    qty,
     unit,
-    kcal_snapshot,
+    qty: qtyStr,
+    kcal_snapshot: Number.isFinite(kcalNum) ? Number(kcalNum) : 0,
     status,
-    created_at,
-    kcal_per_unit_snapshot,
+    created_at: createdAt,
+    kcal_per_unit_snapshot: kpuNum,
   };
 }
 
@@ -83,43 +93,34 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
   useEffect(() => {
     const supabase = getBrowserClient();
     let mounted = true;
+    setRtState('idle');
+
     let chan: ReturnType<typeof supabase.channel> | null = null;
 
     const handleChange = (payload: unknown) => {
       const p = payload as RtChangePayload;
       const eventType = p.eventType;
-      const newRow: RowWithClientOpId = p?.new ?? {};
-      const oldRow: RowWithClientOpId = p?.old ?? {};
+      const newRow = p.new;
+      const oldRow = p.old;
 
       const rawOp =
-        (newRow.client_op_id as string | null | undefined) ??
-        (oldRow.client_op_id as string | null | undefined) ??
-        null;
+        (newRow?.client_op_id ?? oldRow?.client_op_id) ?? null;
 
       const clientOpId =
         typeof rawOp === 'string' && rawOp.trim()
           ? rawOp.trim()
           : null;
 
-      let ignore = false;
       let matchedLocalOp = false;
 
       if (clientOpId && hasPendingOp(clientOpId)) {
         matchedLocalOp = true;
-        ignore = true;
         ackOp(clientOpId);
       } else if (!clientOpId && eventType === 'DELETE') {
-        const idVal = oldRow.id;
-        const entryId =
-          typeof idVal === 'string'
-            ? idVal
-            : idVal != null
-            ? String(idVal)
-            : null;
-
+        const oldId = oldRow?.id;
+        const entryId = typeof oldId === 'string' ? oldId : null;
         if (entryId && ackOpByEntryId(entryId)) {
           matchedLocalOp = true;
-          ignore = true;
         }
       }
 
@@ -128,39 +129,40 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
         eventType,
         clientOpId,
         matchedLocalOp,
-        ignore,
         payload,
       });
 
-      // Local op echo → ignore; client was already updated optimistically.
-      if (!eventType || ignore) return;
+      if (matchedLocalOp) {
+        // Local optimistic op just got its DB echo; UI is already up to date.
+        return;
+      }
 
+      // Remote change: patch the EntriesList local state instead of refreshing.
       if (eventType === 'INSERT' || eventType === 'UPDATE') {
-        const entry = mapRowToRemoteEntry(newRow);
+        if (!newRow) return;
+        const entry = rowToEntry(newRow);
         if (!entry) return;
-        emitDayEntryRemoteEvent({
+
+        emitEntryRealtimeChange({
           type: eventType === 'INSERT' ? 'insert' : 'update',
           entry,
         });
       } else if (eventType === 'DELETE') {
-        const idVal = oldRow.id;
-        const entryId =
-          typeof idVal === 'string'
-            ? idVal
-            : idVal != null
-            ? String(idVal)
-            : null;
+        const oldId = oldRow?.id;
+        const entryId = typeof oldId === 'string' ? oldId : null;
         if (!entryId) return;
-        emitDayEntryRemoteEvent({ type: 'delete', entryId });
+
+        emitEntryRealtimeChange({
+          type: 'delete',
+          id: entryId,
+        });
       }
     };
 
     const run = async () => {
       const { data } = await supabase.auth.getUser();
       if (!mounted || !data.user) {
-        console.log('[RT] day entries: no authenticated user, skipping', {
-          dayId,
-        });
+        console.log('[RT] day entries: no authenticated user, skipping');
         return;
       }
 
@@ -186,13 +188,11 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
         subscribe(callback: (status: ChannelStatus) => void): unknown;
       };
 
-      const evs: PostgresEvent[] = ['INSERT', 'UPDATE', 'DELETE'];
-      const channelName = `rt-entries-day-${dayId}`;
+      const rawChannel = supabase.channel(`rt-day-entries-${dayId}`);
+      const c = rawChannel as unknown as PgChannel;
 
-      let c = supabase.channel(channelName) as unknown as PgChannel;
-
-      for (const ev of evs) {
-        c = c.on(
+      (['INSERT', 'UPDATE', 'DELETE'] as PostgresEvent[]).forEach((ev) => {
+        c.on(
           'postgres_changes',
           {
             event: ev,
@@ -202,15 +202,11 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
           },
           handleChange
         );
-      }
+      });
 
-      const subscribed = c.subscribe((status: ChannelStatus) => {
+      chan = c.subscribe((status: ChannelStatus) => {
         if (!mounted) return;
-        console.log('[RT] day entries channel status', {
-          dayId,
-          status,
-        });
-
+        console.log('[RT] day entries channel status', { dayId, status });
         if (status === 'SUBSCRIBED') {
           setRtState('live');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -218,9 +214,7 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
         } else if (status === 'CLOSED') {
           setRtState('idle');
         }
-      });
-
-      chan = subscribed as ReturnType<typeof supabase.channel>;
+      }) as ReturnType<typeof supabase.channel>;
     };
 
     void run();
@@ -231,7 +225,7 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
     };
   }, [dayId]);
 
-  // Dev-only indicator (like RealtimeBridge, but entries-only).
+  // Dev-only indicator; hide in production
   if (process.env.NODE_ENV === 'production') {
     return null;
   }

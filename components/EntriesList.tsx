@@ -44,10 +44,6 @@ import {
   ackOp,
 } from '@/components/realtime/opRegistry';
 import useStickyBoolean from '@/hooks/useStickyBoolean';
-import {
-  subscribeToDayEntryRemoteEvents,
-  type DayEntryRemoteEvent,
-} from '@/components/realtime/dayEntriesEvents';
 
 export type Entry = {
   id: string;
@@ -73,6 +69,31 @@ export function subscribeToEntryAdds(listener: EntryAddedListener): () => void {
 export function emitEntryAdded(entry: Entry): void {
   for (const listener of entryAddedListeners) {
     listener(entry);
+  }
+}
+
+/* ---------- Realtime change bus (for DayEntriesRealtime) ---------- */
+
+export type EntryRealtimeChange =
+  | { type: 'insert'; entry: Entry }
+  | { type: 'update'; entry: Entry }
+  | { type: 'delete'; id: string };
+
+type EntryRealtimeListener = (change: EntryRealtimeChange) => void;
+const entryRealtimeListeners = new Set<EntryRealtimeListener>();
+
+export function subscribeToEntryRealtimeChanges(
+  listener: EntryRealtimeListener
+): () => void {
+  entryRealtimeListeners.add(listener);
+  return () => {
+    entryRealtimeListeners.delete(listener);
+  };
+}
+
+export function emitEntryRealtimeChange(change: EntryRealtimeChange): void {
+  for (const listener of entryRealtimeListeners) {
+    listener(change);
   }
 }
 
@@ -148,38 +169,38 @@ export default function EntriesList({
     return unsubscribe;
   }, []);
 
-  // Remote changes from other tabs/devices (via DayEntriesRealtime)
+  // Apply remote Realtime changes (from DayEntriesRealtime) to local items state.
   useEffect(() => {
-    const unsubscribe = subscribeToDayEntryRemoteEvents(
-      (ev: DayEntryRemoteEvent) => {
-        setItems((prev) => {
-          switch (ev.type) {
-            case 'insert': {
-              const e = ev.entry;
-              const idx = prev.findIndex((p) => p.id === e.id);
-              if (idx === -1) {
-                return [...prev, e];
-              }
-              return prev.map((p) => (p.id === e.id ? { ...p, ...e } : p));
+    const unsubscribe = subscribeToEntryRealtimeChanges((change) => {
+      setItems((prev) => {
+        switch (change.type) {
+          case 'insert': {
+            const exists = prev.some((e) => e.id === change.entry.id);
+            if (exists) {
+              // If we somehow already have it, treat as an update.
+              return prev.map((e) =>
+                e.id === change.entry.id ? { ...e, ...change.entry } : e
+              );
             }
-            case 'update': {
-              const e = ev.entry;
-              const idx = prev.findIndex((p) => p.id === e.id);
-              if (idx === -1) {
-                return [...prev, e];
-              }
-              return prev.map((p) => (p.id === e.id ? { ...p, ...e } : p));
-            }
-            case 'delete': {
-              return prev.filter((p) => p.id !== ev.entryId);
-            }
-            default:
-              return prev;
+            return [...prev, change.entry];
           }
-        });
-      }
-    );
-
+          case 'update': {
+            const exists = prev.some((e) => e.id === change.entry.id);
+            if (!exists) {
+              // Late join: if we don't have it yet, append.
+              return [...prev, change.entry];
+            }
+            return prev.map((e) =>
+              e.id === change.entry.id ? { ...e, ...change.entry } : e
+            );
+          }
+          case 'delete':
+            return prev.filter((e) => e.id !== change.id);
+          default:
+            return prev;
+        }
+      });
+    });
     return unsubscribe;
   }, []);
 
