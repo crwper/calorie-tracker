@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { getBrowserClient } from '@/lib/supabase/client';
 import {
   hasPendingOp,
+  hasPendingOpForEntry,
   ackOp,
   ackOpByEntryId,
 } from '@/components/realtime/opRegistry';
@@ -122,12 +123,19 @@ export default function DayEntriesRealtime({ dayId }: { dayId: string }) {
           ? rawOp.trim()
           : null;
 
+      const idVal = newRow?.id ?? oldRow?.id;
+      const entryId = typeof idVal === 'string' ? idVal : null;
+
       let matchedLocalOp = false;
 
       if (clientOpId && hasPendingOp(clientOpId)) {
         matchedLocalOp = true;
         ackOp(clientOpId);
-      } else if (!clientOpId && eventType === 'DELETE') {
+      } else if (entryId && hasPendingOpForEntry(entryId)) {
+        matchedLocalOp = true;
+      }
+
+      if (!clientOpId && eventType === 'DELETE') {
         const oldId = oldRow?.id;
         const entryId = typeof oldId === 'string' ? oldId : null;
         if (entryId && ackOpByEntryId(entryId)) {
