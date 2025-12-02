@@ -155,28 +155,36 @@ export default function CatalogAddForm({
           <legend className="text-xs text-muted-foreground px-1">
             Your default serving (for this dog)
           </legend>
-          <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+
+          {/* Use the same grid template so the input column matches Serving size */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-end">
             <div>
               <label className="block text-xs text-muted-foreground">
                 Default serving
               </label>
-              <input
-                name="default_qty"
-                type="text"
-                inputMode="decimal"
-                value={defaultQty}
-                onChange={(e) => setDefaultQty(e.currentTarget.value)}
-                className="w-full border rounded px-2 py-1 text-sm"
-                placeholder="0.5 or 3/4"
-                required
-              />
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  name="default_qty"
+                  type="text"
+                  inputMode="decimal"
+                  value={defaultQty}
+                  onChange={(e) => setDefaultQty(e.currentTarget.value)}
+                  className="w-full border rounded px-2 py-1 text-sm"
+                  placeholder="0.5 or 3/4"
+                  required
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {unitLabel}
+                </span>
+              </div>
               <p className="mt-1 text-[11px] text-subtle-foreground">
                 Your usual serving for this dog
               </p>
             </div>
-            <div className="pb-[5px] text-xs text-muted-foreground">
-              {unitLabel}
-            </div>
+
+            {/* Empty columns just to preserve the same grid structure / widths */}
+            <div className="hidden sm:block" />
+            <div className="hidden sm:block" />
           </div>
         </fieldset>
 
