@@ -1,3 +1,4 @@
+// app/catalog/actions.ts
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -8,6 +9,35 @@ function okNum(n: unknown) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) throw new Error('Value must be a positive number');
   return v;
+}
+
+function deriveKcalPerUnit(formData: FormData): number {
+  // Optional: direct kcal_per_unit (for future "advanced" mode or legacy forms)
+  const rawDirect = formData.get('kcal_per_unit');
+  const directStr = rawDirect != null ? String(rawDirect).trim() : '';
+  if (directStr) {
+    const direct = okNum(directStr);
+    return direct;
+  }
+
+  // Default path: Calories in X units → compute kcal_per_unit = kcal / qty
+  const rawLabelKcal = formData.get('label_kcal');
+  const rawLabelQty = formData.get('label_qty');
+
+  if (rawLabelKcal == null || rawLabelQty == null) {
+    throw new Error('Calories and amount are required');
+  }
+
+  const labelKcal = okNum(rawLabelKcal);
+  const labelQty = okNum(rawLabelQty);
+
+  const perUnit = labelKcal / labelQty;
+  if (!Number.isFinite(perUnit) || perUnit <= 0) {
+    throw new Error('Could not compute kcal per unit');
+  }
+
+  // Match numeric(10,4) on the DB side
+  return Number(perUnit.toFixed(4));
 }
 
 export async function createCatalogItemAction(formData: FormData) {
@@ -22,10 +52,12 @@ export async function createCatalogItemAction(formData: FormData) {
 
   const name = String(formData.get('name') ?? '').trim();
   const unit = String(formData.get('unit') ?? '').trim();
-  const kcalPerUnit = okNum(formData.get('kcal_per_unit'));
+
   const defaultQty = okNum(formData.get('default_qty'));
 
   if (!name || !unit) throw new Error('Name and unit required');
+
+  const kcalPerUnit = deriveKcalPerUnit(formData);
 
   const { error } = await supabase.from('catalog_items').insert({
     user_id: user.id,
@@ -58,10 +90,12 @@ export async function updateCatalogItemAction(formData: FormData) {
 
   const name = String(formData.get('name') ?? '').trim();
   const unit = String(formData.get('unit') ?? '').trim();
-  const kcalPerUnit = okNum(formData.get('kcal_per_unit'));
+
   const defaultQty = okNum(formData.get('default_qty'));
 
   if (!name || !unit) throw new Error('Name and unit required');
+
+  const kcalPerUnit = deriveKcalPerUnit(formData);
 
   const { error } = await supabase
     .from('catalog_items')

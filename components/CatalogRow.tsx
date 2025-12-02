@@ -17,6 +17,19 @@ type Item = {
   created_at: string;
 };
 
+function initialLabelQtyForUnit(unit: string): number {
+  const u = unit.trim().toLowerCase();
+  if (u === 'g' || u === 'gram' || u === 'grams' || u === 'ml' || u === 'milliliter' || u === 'milliliters' || u === 'millilitre') {
+    return 100;
+  }
+  return 1;
+}
+
+function numOrNull(s: string): number | null {
+  const n = parseFloat(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export default function CatalogRow({
   item,
   updateAction,
@@ -115,7 +128,7 @@ function ViewRow({
   );
 }
 
-/* ---------- Edit row (grid aligned with "Add item") ---------- */
+/* ---------- Edit row (friendly label-style inputs) ---------- */
 
 // Exit edit mode after a successful submit settles
 function PendingWatcher({ onSettled }: { onSettled: () => void }) {
@@ -143,23 +156,46 @@ function EditRow({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
+  const [name, setName] = useState(item.name);
+  const [unit, setUnit] = useState(item.unit);
+
+  const initialQty = initialLabelQtyForUnit(item.unit);
+  const [labelQty, setLabelQty] = useState<string>(() => String(initialQty));
+  const [labelKcal, setLabelKcal] = useState<string>(() => {
+    const per = Number(item.kcal_per_unit ?? 0);
+    const k = per * initialQty;
+    if (!Number.isFinite(k) || k <= 0) return '';
+    return String(Number(k.toFixed(2)));
+  });
+  const [defaultQty, setDefaultQty] = useState<string>(() =>
+    String(item.default_qty ?? '')
+  );
+
+  const labelKcalNum = numOrNull(labelKcal);
+  const labelQtyNum = numOrNull(labelQty);
+  const perUnit =
+    labelKcalNum != null && labelQtyNum != null ? labelKcalNum / labelQtyNum : null;
+
+  const defaultQtyNum = numOrNull(defaultQty);
+  const servingKcal =
+    perUnit != null && defaultQtyNum != null ? perUnit * defaultQtyNum : null;
+
+  const unitLabel = unit || 'unit';
+
   return (
     <form
       ref={formRef}
       action={updateAction}
-      className="
-        grid gap-2 items-end
-        grid-cols-2
-        md:grid-cols-[2fr_1fr_1fr_1fr_1fr]
-      "
+      className="grid grid-cols-[2fr_1fr] gap-2 items-end"
     >
       <input type="hidden" name="id" value={item.id} />
 
-      <div className="col-span-2 md:col-span-2 min-w-0">
+      <div>
         <label className="text-xs text-muted-foreground">Name</label>
         <input
           name="name"
-          defaultValue={item.name}
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
           className="w-full min-w-0 border rounded px-2 py-1 text-sm"
         />
       </div>
@@ -168,39 +204,60 @@ function EditRow({
         <label className="text-xs text-muted-foreground">Unit</label>
         <input
           name="unit"
-          defaultValue={item.unit}
+          value={unit}
+          onChange={(e) => setUnit(e.currentTarget.value)}
           className="w-full border rounded px-2 py-1 text-sm"
         />
       </div>
 
       <div>
-        <label className="text-xs text-muted-foreground">kcal / unit</label>
+        <label className="text-xs text-muted-foreground">
+          Calories in this amount
+        </label>
         <input
-          name="kcal_per_unit"
+          name="label_kcal"
           type="number"
           step="any"
           min="0"
           inputMode="decimal"
-          defaultValue={String(item.kcal_per_unit)}
+          value={labelKcal}
+          onChange={(e) => setLabelKcal(e.currentTarget.value)}
           className="w-full border rounded px-2 py-1 text-sm"
         />
       </div>
 
       <div>
-        <label className="text-xs text-muted-foreground">Default qty</label>
+        <label className="text-xs text-muted-foreground">
+          Amount (in your unit)
+        </label>
+        <input
+          name="label_qty"
+          type="number"
+          step="any"
+          min="0"
+          inputMode="decimal"
+          value={labelQty}
+          onChange={(e) => setLabelQty(e.currentTarget.value)}
+          className="w-full border rounded px-2 py-1 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-muted-foreground">Default serving</label>
         <input
           name="default_qty"
           type="number"
           step="any"
           min="0"
           inputMode="decimal"
-          defaultValue={String(item.default_qty)}
+          value={defaultQty}
+          onChange={(e) => setDefaultQty(e.currentTarget.value)}
           className="w-full border rounded px-2 py-1 text-sm"
         />
       </div>
 
-      {/* Row 2: Save + Cancel, full-width so inputs get max room */}
-      <div className="col-span-full flex items-center justify-end gap-1 pt-1">
+      {/* Row: Save + Cancel */}
+      <div className="col-span-2 flex items-center justify-end gap-1 pt-1">
         <button
           type="submit"
           className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
@@ -220,6 +277,34 @@ function EditRow({
         >
           Cancel
         </button>
+      </div>
+
+      {/* Preview */}
+      <div className="col-span-2 text-xs text-muted-foreground">
+        {perUnit != null ? (
+          <>
+            1 {unitLabel} ≈{' '}
+            <span className="tabular-nums">
+              {perUnit.toFixed(2)}
+            </span>{' '}
+            kcal
+            {servingKcal != null && (
+              <>
+                {' · '}Default:{' '}
+                <span className="tabular-nums">
+                  {defaultQtyNum?.toFixed(2)}
+                </span>{' '}
+                {unitLabel} ≈{' '}
+                <span className="tabular-nums">
+                  {servingKcal.toFixed(0)}
+                </span>{' '}
+                kcal
+              </>
+            )}
+          </>
+        ) : (
+          <span>Enter calories and amount to see a preview.</span>
+        )}
       </div>
 
       {/* Refresh page data on action settle + leave edit mode */}
