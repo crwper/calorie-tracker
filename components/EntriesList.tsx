@@ -39,7 +39,6 @@ import ListRow from '@/components/primitives/ListRow';
 import Grip from '@/components/icons/Grip';
 import {
   registerPendingOp,
-  hasPendingOpForEntry,
   hasSavingOpForEntry,
   subscribeToPendingOps,
   ackOp,
@@ -576,70 +575,80 @@ export type AutoSaveQtyFormHandle = {
   cancelPending: () => void;
 };
 
-const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
-  entryId: string;
-  unit: string;
-  initialQty: string;
-  selectedYMD: string;
-  onQtyOptimistic: (qty: number) => void;
-  readOnly?: boolean;
-}>(function AutoSaveQtyForm(
+const AutoSaveQtyForm = forwardRef<
+  AutoSaveQtyFormHandle,
+  {
+    entryId: string;
+    unit: string;
+    initialQty: string;
+    selectedYMD: string;
+    onQtyOptimistic: (qty: number) => void;
+    readOnly?: boolean;
+  }
+>(function AutoSaveQtyForm(
   { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, readOnly = false },
   ref
 ) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [val, setVal] = useState(initialQty);
-  const { submit: debouncedSubmit, cancel: cancelDebounce } = useDebouncedSubmit(600);
+  // IMPORTANT: the visible <input/> is NOT inside the server-action form.
+  // The form is hidden and used only for requestSubmit() with hidden inputs,
+  // so the server-action machinery can’t “reset” the visible control.
+  const submitFormRef = useRef<HTMLFormElement>(null);
+
+  const qtyHiddenRef = useRef<HTMLInputElement | null>(null);
   const clientOpInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [val, setVal] = useState(initialQty);
+
+  const { submit: debouncedSubmit, cancel: cancelDebounce } = useDebouncedSubmit(600);
 
   // Keep input in sync when server refresh replaces props
   useEffect(() => {
     setVal(initialQty);
   }, [initialQty]);
 
-  // make it stable
   const parseQty = useCallback((v: string): number | null => {
     const n = parseFloat(v);
     return Number.isFinite(n) && n > 0 ? n : null;
   }, []);
 
-  // make it stable
+  const applyOpIdAndHiddenFields = useCallback(
+    (opId: string, qty: number) => {
+      if (clientOpInputRef.current) clientOpInputRef.current.value = opId;
+      if (qtyHiddenRef.current) qtyHiddenRef.current.value = String(qty);
+
+      registerPendingOp({
+        id: opId,
+        kind: 'update_qty',
+        entryIds: [entryId],
+        startedAt: Date.now(),
+      });
+    },
+    [entryId]
+  );
+
   const commit = useCallback(
     (next: number, mode: 'debounced' | 'immediate') => {
+      // Update optimistic UI immediately
       onQtyOptimistic(next);
-      const form = formRef.current;
-      if (!form) return;
 
-      const applyOpId = (opId: string) => {
-        if (clientOpInputRef.current) {
-          clientOpInputRef.current.value = opId;
-        }
-        registerPendingOp({
-          id: opId,
-          kind: 'update_qty',
-          entryIds: [entryId],
-          startedAt: Date.now(),
-        });
-        const input = form.elements.namedItem('qty') as HTMLInputElement | null;
-        if (input) input.value = String(next);
-      };
+      const form = submitFormRef.current;
+      if (!form) return;
 
       if (mode === 'immediate') {
         // Make sure no old debounced submit is still queued
         cancelDebounce();
         const opId = crypto.randomUUID();
-        applyOpId(opId);
+        applyOpIdAndHiddenFields(opId, next);
         form.requestSubmit();
       } else {
         debouncedSubmit(form, (opId) => {
-          applyOpId(opId);
+          applyOpIdAndHiddenFields(opId, next);
         });
       }
     },
-    [onQtyOptimistic, debouncedSubmit, cancelDebounce, entryId]
+    [onQtyOptimistic, debouncedSubmit, cancelDebounce, applyOpIdAndHiddenFields]
   );
 
-  // Expose "commitNow" so parent can flush before toggling to eaten
   useImperativeHandle(
     ref,
     () => ({
@@ -659,32 +668,12 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
   );
 
   return (
-    <form
-      ref={formRef}
-      action={updateEntryQtyAction}
-      className="flex items-center gap-1"
-      onSubmit={(ev) => {
-        // Enter key submits; keep optimistic in sync
-        const fd = new FormData(ev.currentTarget);
-        const q = parseFloat(String(fd.get('qty') || '0'));
-        if (Number.isFinite(q) && q > 0) onQtyOptimistic(q);
-      }}
-    >
-      <input type="hidden" name="date" value={selectedYMD} />
-      <input type="hidden" name="entry_id" value={entryId} />
-      <input
-        ref={clientOpInputRef}
-        type="hidden"
-        name="client_op_id"
-        defaultValue=""
-      />
+    <div className="flex items-center gap-1">
       {readOnly ? (
         <>
           {/* Text-only when eaten */}
           <span className="font-medium">{val}</span>
           <span>{unit}</span>
-          {/* Keep a hidden qty field so the form instance stays stable and commitNow can still set it */}
-          <input name="qty" value={val} readOnly hidden aria-hidden="true" />
         </>
       ) : (
         <>
@@ -693,7 +682,6 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
           </label>
           <input
             id={`qty-${entryId}`}
-            name="qty"
             type="number"
             step="any"
             min="0"
@@ -710,7 +698,16 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
               if (n != null) {
                 commit(n, 'immediate');
               } else {
+                // Invalid/blank -> revert to last known qty
+                cancelDebounce();
                 setVal(initialQty);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // Not inside a form anymore, so make Enter behave like “commit”
+                e.preventDefault();
+                e.currentTarget.blur(); // blur triggers immediate commit
               }
             }}
             className="w-20 border rounded px-2 py-1 text-xs"
@@ -718,7 +715,15 @@ const AutoSaveQtyForm = forwardRef<AutoSaveQtyFormHandle, {
           <span>{unit}</span>
         </>
       )}
-    </form>
+
+      {/* Hidden server-action form (no visible controls inside) */}
+      <form ref={submitFormRef} action={updateEntryQtyAction} className="hidden" aria-hidden="true">
+        <input type="hidden" name="date" value={selectedYMD} />
+        <input type="hidden" name="entry_id" value={entryId} />
+        <input ref={qtyHiddenRef} type="hidden" name="qty" defaultValue={initialQty} />
+        <input ref={clientOpInputRef} type="hidden" name="client_op_id" defaultValue="" />
+      </form>
+    </div>
   );
 });
 
@@ -740,78 +745,74 @@ function CheckboxStatusForm({
   /** read the latest typed qty from the sibling qty editor */
   getLatestQty?: () => number | null;
   onSubmitOptimistic: (next: 'planned' | 'eaten') => void;
-  onPreSubmit: () => void; // flush qty before toggling
+  onPreSubmit: () => void; // cancel qty debounce before toggling
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const nextRef = useRef<HTMLInputElement>(null);
-  const qtyRef = useRef<HTMLInputElement>(null);
-  const targetRef = useRef<'planned' | 'eaten'>(currentStatus);
-  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Keep next target aligned if the server refresh changes currentStatus
-  useEffect(() => {
-    targetRef.current = currentStatus;
-    if (nextRef.current) nextRef.current.value = currentStatus;
-  }, [currentStatus]);
+  // Prevent a late error handler from “rolling back” a newer toggle.
+  const lastOpRef = useRef<string | null>(null);
 
   return (
-    <form
-      ref={formRef}
-      action={updateEntryQtyAndStatusAction}
-      className="inline-flex items-center justify-center"
-      onSubmit={() => onSubmitOptimistic(targetRef.current)}
-    >
-      <input type="hidden" name="date" value={selectedYMD} />
-      <input type="hidden" name="entry_id" value={entryId} />
-      <input ref={nextRef} type="hidden" name="next_status" value={currentStatus} />
-      <input ref={qtyRef} type="hidden" name="qty" />
-      <input
-        ref={clientOpInputRef}
-        type="hidden"
-        name="client_op_id"
-        defaultValue=""
-      />
+    <input
+      id={`eaten-${entryId}`}
+      type="checkbox"
+      className="
+        h-4 w-4 cursor-pointer
+        border border-input rounded
+        accent-control-accent
+        outline-none focus:ring-2 focus:ring-control-ring
+      "
+      aria-label="Eaten"
+      title={currentStatus === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
+      checked={currentStatus === 'eaten'}
+      onChange={(e) => {
+        // Cancel any pending qty debounce; we will send qty ourselves
+        onPreSubmit();
 
-      <input
-        id={`eaten-${entryId}`}
-        type="checkbox"
-        className="
-          h-4 w-4 cursor-pointer
-          border border-input rounded
-          accent-control-accent
-          outline-none focus:ring-2 focus:ring-control-ring
-        "
-        aria-label="Eaten"
-        title={currentStatus === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
-        checked={currentStatus === 'eaten'}
-        onChange={(e) => {
-          // Cancel any pending qty debounce; we will send qty ourselves
-          onPreSubmit();
-          const next = e.currentTarget.checked ? 'eaten' : 'planned';
-          targetRef.current = next;
-          if (nextRef.current) nextRef.current.value = next;
+        const prev = currentStatus;
+        const next: 'planned' | 'eaten' = e.currentTarget.checked ? 'eaten' : 'planned';
 
-          // Read latest qty and fill the hidden input (fallback to initial)
-          const latest = getLatestQty ? getLatestQty() : null;
-          if (qtyRef.current) {
-            qtyRef.current.value =
-              latest != null ? String(latest) : String(initialQtyStr);
+        // Optimistic UI first (keeps checkbox controlled by React, no form-reset flicker)
+        onSubmitOptimistic(next);
+
+        // Read latest qty and fall back to initial
+        const latest = getLatestQty ? getLatestQty() : null;
+        const fallback = parseFloat(String(initialQtyStr)) || 0;
+        const qtyToSend =
+          latest != null && Number.isFinite(latest) && latest > 0
+            ? latest
+            : Number.isFinite(fallback) && fallback > 0
+            ? fallback
+            : 1; // last-resort safety; server requires > 0
+
+        const opId = crypto.randomUUID();
+        lastOpRef.current = opId;
+
+        registerPendingOp({
+          id: opId,
+          kind: 'update_qty_and_status',
+          entryIds: [entryId],
+          startedAt: Date.now(),
+        });
+
+        const fd = new FormData();
+        fd.set('date', selectedYMD);
+        fd.set('entry_id', entryId);
+        fd.set('next_status', next);
+        fd.set('qty', String(qtyToSend));
+        fd.set('client_op_id', opId);
+
+        void updateEntryQtyAndStatusAction(fd).catch((err) => {
+          console.error(err);
+
+          // Clear the pending-op, otherwise “Saving…” can get stuck
+          ackOp(opId);
+
+          // Only rollback if this is still the latest attempted toggle
+          if (lastOpRef.current === opId) {
+            onSubmitOptimistic(prev);
+            alert('Update failed. Please try again.');
           }
-
-          const opId = crypto.randomUUID();
-          if (clientOpInputRef.current) {
-            clientOpInputRef.current.value = opId;
-          }
-          registerPendingOp({
-            id: opId,
-            kind: 'update_qty_and_status',
-            entryIds: [entryId],
-            startedAt: Date.now(),
-          });
-
-          formRef.current?.requestSubmit();
-        }}
-      />
-    </form>
+        });
+      }}
+    />
   );
 }
