@@ -1,7 +1,10 @@
 // components/GoalAddForm.tsx
 'use client';
 
+import { useState, useMemo } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
+import Alert from '@/components/primitives/Alert';
+import { parsePositiveNumber } from '@/lib/quantity';
 
 export default function GoalAddForm({
   defaultDate,
@@ -12,11 +15,35 @@ export default function GoalAddForm({
   next?: string | null;
   createAction: (formData: FormData) => Promise<void>;
 }) {
+  const [startDate, setStartDate] = useState(defaultDate);
+  const [kcalTarget, setKcalTarget] = useState('');
+  const [note, setNote] = useState('');
+
+  const parsedTarget = useMemo(
+    () => parsePositiveNumber(kcalTarget),
+    [kcalTarget]
+  );
+
+  const isInt = parsedTarget != null && Number.isInteger(parsedTarget);
+  const targetOutOfRange =
+    parsedTarget != null && (parsedTarget < 200 || parsedTarget > 5000);
+
+  const targetError =
+    kcalTarget.trim().length > 0 &&
+    (parsedTarget == null || !isInt || targetOutOfRange);
+
+  const hasError = targetError;
+
+  const buttonBase =
+    'rounded border px-3 py-1 text-sm hover:bg-control-hover';
+  const disabledButton =
+    'opacity-60 cursor-not-allowed hover:bg-transparent';
+
   return (
     <div className="rounded-lg border bg-card p-4">
       <form
         action={createAction}
-        className="grid grid-cols-[2fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr] gap-2 items-end"
+        className="grid grid-cols-[2fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr] gap-2 items-start"
       >
         {next ? <input type="hidden" name="next" value={next} /> : null}
 
@@ -25,40 +52,66 @@ export default function GoalAddForm({
           <input
             name="start_date"
             type="date"
-            defaultValue={defaultDate}
+            value={startDate}
+            onChange={(e) => setStartDate(e.currentTarget.value)}
             className="w-full border rounded px-2 py-1 text-sm"
           />
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Target (kcal/day)</label>
+          <label className="text-xs text-muted-foreground">
+            Target (kcal/day)
+          </label>
           <input
             name="kcal_target"
-            type="number"
-            min="200"
-            max="5000"
-            step="1"
-            inputMode="numeric"
+            type="text"
+            inputMode="decimal"
+            value={kcalTarget}
+            onChange={(e) => setKcalTarget(e.currentTarget.value)}
             className="w-full border rounded px-2 py-1 text-sm"
             placeholder="1350"
           />
+          {targetError ? (
+            <p className="mt-1 text-[11px] text-alert-error-fg">
+              Enter a whole number between 200 and 5000 (e.g., 1350).
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-subtle-foreground">
+              200–5000 kcal/day
+            </p>
+          )}
         </div>
 
         <div className="col-span-full">
-          <label className="text-xs text-muted-foreground">Note (optional)</label>
+          <label className="text-xs text-muted-foreground">
+            Note (optional)
+          </label>
           <input
             name="note"
             className="w-full border rounded px-2 py-1 text-sm"
             placeholder="e.g., post-illness adjustment"
+            value={note}
+            onChange={(e) => setNote(e.currentTarget.value)}
           />
         </div>
+
+        {/* Global error alert */}
+        {hasError && (
+          <div className="col-span-full">
+            <Alert tone="error">
+              Please fix the target value. It must be a whole number between
+              200 and 5000 kcal/day.
+            </Alert>
+          </div>
+        )}
 
         <div className="col-span-full flex gap-2">
           <button
             type="submit"
             name="intent"
             value="create"
-            className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+            className={`${buttonBase} ${hasError ? disabledButton : ''}`}
+            disabled={hasError}
           >
             Save
           </button>
@@ -67,8 +120,9 @@ export default function GoalAddForm({
               type="submit"
               name="intent"
               value="create_return"
-              className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+              className={`${buttonBase} ${hasError ? disabledButton : ''}`}
               title="Save and return to the day you came from"
+              disabled={hasError}
             >
               Save &amp; return
             </button>

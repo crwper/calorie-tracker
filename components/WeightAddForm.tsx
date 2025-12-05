@@ -3,6 +3,8 @@
 
 import { useMemo, useState } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
+import Alert from '@/components/primitives/Alert';
+import { parsePositiveNumber } from '@/lib/quantity';
 
 export default function WeightAddForm({
   defaultDate,
@@ -19,30 +21,64 @@ export default function WeightAddForm({
   const [youDog, setYouDog] = useState('');
   const [weight, setWeight] = useState('');
 
-  function numOrNull(s: string) {
-    const n = parseFloat(s);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
+  // Parse numeric inputs (supporting the same fraction syntax as elsewhere)
+  const parsedWeight = useMemo(
+    () => parsePositiveNumber(weight),
+    [weight]
+  );
+  const parsedYou = useMemo(() => parsePositiveNumber(you), [you]);
+  const parsedYouDog = useMemo(
+    () => parsePositiveNumber(youDog),
+    [youDog]
+  );
+
+  const weightError =
+    method === 'vet' &&
+    weight.trim().length > 0 &&
+    parsedWeight == null;
+
+  const youError =
+    method === 'home_diff' &&
+    you.trim().length > 0 &&
+    parsedYou == null;
+
+  const youDogError =
+    method === 'home_diff' &&
+    youDog.trim().length > 0 &&
+    parsedYouDog == null;
+
+  const diffError =
+    method === 'home_diff' &&
+    parsedYou != null &&
+    parsedYouDog != null &&
+    parsedYouDog <= parsedYou;
+
+  const hasNumericError =
+    weightError || youError || youDogError || diffError;
 
   const previewKg = useMemo(() => {
     if (method === 'vet') {
-      const w = numOrNull(weight);
-      if (!w) return null;
+      if (parsedWeight == null) return null;
+      const w = parsedWeight;
       return unit === 'lb' ? w * 0.45359237 : w;
     } else {
-      const a = numOrNull(youDog);
-      const b = numOrNull(you);
-      if (!a || !b || a <= b) return null;
-      const diff = a - b;
+      if (parsedYou == null || parsedYouDog == null) return null;
+      if (parsedYouDog <= parsedYou) return null;
+      const diff = parsedYouDog - parsedYou;
       return unit === 'lb' ? diff * 0.45359237 : diff;
     }
-  }, [method, unit, weight, you, youDog]);
+  }, [method, unit, parsedWeight, parsedYou, parsedYouDog]);
+
+  const buttonBase =
+    'rounded border px-3 py-1 text-sm hover:bg-control-hover';
+  const disabledButton =
+    'opacity-60 cursor-not-allowed hover:bg-transparent';
 
   return (
     <div className="rounded-lg border bg-card p-4">
       <form
         action={createAction}
-        className="grid grid-cols-[1fr_1fr_1fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 items-end"
+        className="grid grid-cols-[1fr_1fr_1fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 items-start"
       >
         {next ? <input type="hidden" name="next" value={next} /> : null}
 
@@ -61,7 +97,9 @@ export default function WeightAddForm({
           <select
             name="method"
             value={method}
-            onChange={(e) => setMethod(e.currentTarget.value as 'vet' | 'home_diff')}
+            onChange={(e) =>
+              setMethod(e.currentTarget.value as 'vet' | 'home_diff')
+            }
             className="w-full border rounded px-2 py-1 text-sm"
           >
             <option value="vet">Vet scale</option>
@@ -74,7 +112,9 @@ export default function WeightAddForm({
           <select
             name="unit"
             value={unit}
-            onChange={(e) => setUnit(e.currentTarget.value as 'kg' | 'lb')}
+            onChange={(e) =>
+              setUnit(e.currentTarget.value as 'kg' | 'lb')
+            }
             className="w-full border rounded px-2 py-1 text-sm"
           >
             <option value="kg">kg</option>
@@ -85,18 +125,28 @@ export default function WeightAddForm({
         {/* Method-specific inputs */}
         {method === 'vet' ? (
           <div className="col-span-2">
-            <label className="text-xs text-muted-foreground">Dog weight</label>
+            <label className="text-xs text-muted-foreground">
+              Dog weight
+            </label>
             <input
               name="weight"
-              type="number"
-              step="any"
-              min="0"
+              type="text"
               inputMode="decimal"
               value={weight}
               onChange={(e) => setWeight(e.currentTarget.value)}
               className="w-full border rounded px-2 py-1 text-sm"
               placeholder={unit === 'kg' ? '12.3' : '27.1'}
             />
+            {weightError ? (
+              <p className="mt-1 text-[11px] text-alert-error-fg">
+                Enter a positive number or simple fraction (e.g., 12.3, 12
+                1/2).
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] text-subtle-foreground">
+                Dog weight only
+              </p>
+            )}
           </div>
         ) : (
           <>
@@ -104,35 +154,57 @@ export default function WeightAddForm({
               <label className="text-xs text-muted-foreground">You</label>
               <input
                 name="me"
-                type="number"
-                step="any"
-                min="0"
+                type="text"
                 inputMode="decimal"
                 value={you}
                 onChange={(e) => setYou(e.currentTarget.value)}
                 className="w-full border rounded px-2 py-1 text-sm"
                 placeholder={unit === 'kg' ? '78.2' : '172.5'}
               />
+              {youError ? (
+                <p className="mt-1 text-[11px] text-alert-error-fg">
+                  Enter a positive number or simple fraction.
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-subtle-foreground">
+                  Your weight alone
+                </p>
+              )}
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">You + dog</label>
+              <label className="text-xs text-muted-foreground">
+                You + dog
+              </label>
               <input
                 name="me_plus_dog"
-                type="number"
-                step="any"
-                min="0"
+                type="text"
                 inputMode="decimal"
                 value={youDog}
                 onChange={(e) => setYouDog(e.currentTarget.value)}
                 className="w-full border rounded px-2 py-1 text-sm"
                 placeholder={unit === 'kg' ? '90.6' : '199.9'}
               />
+              {youDogError ? (
+                <p className="mt-1 text-[11px] text-alert-error-fg">
+                  Enter a positive number or simple fraction.
+                </p>
+              ) : diffError ? (
+                <p className="mt-1 text-[11px] text-alert-error-fg">
+                  “You + dog” must be greater than “You”.
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-subtle-foreground">
+                  Combined weight
+                </p>
+              )}
             </div>
           </>
         )}
 
         <div className="col-span-full">
-          <label className="text-xs text-muted-foreground">Note (optional)</label>
+          <label className="text-xs text-muted-foreground">
+            Note (optional)
+          </label>
           <input
             name="note"
             className="w-full border rounded px-2 py-1 text-sm"
@@ -140,12 +212,26 @@ export default function WeightAddForm({
           />
         </div>
 
+        {/* Global numeric/fraction error alert */}
+        {hasNumericError && (
+          <div className="col-span-full">
+            <Alert tone="error">
+              Some weights are invalid. Please use positive numbers or simple
+              fractions (e.g., 12.5, 12 1/2), and ensure “You + dog” is
+              greater than “You”.
+            </Alert>
+          </div>
+        )}
+
         <div className="col-span-full flex gap-2 items-center">
           <button
             type="submit"
             name="intent"
             value="create"
-            className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+            className={`${buttonBase} ${
+              hasNumericError ? disabledButton : ''
+            }`}
+            disabled={hasNumericError}
           >
             Save
           </button>
@@ -154,15 +240,21 @@ export default function WeightAddForm({
               type="submit"
               name="intent"
               value="create_return"
-              className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+              className={`${buttonBase} ${
+                hasNumericError ? disabledButton : ''
+              }`}
               title="Save and return to the selected day"
+              disabled={hasNumericError}
             >
               Save &amp; return
             </button>
           )}
           {previewKg != null && (
             <span className="text-xs text-muted-foreground">
-              Preview:&nbsp;<span className="font-medium tabular-nums">{previewKg.toFixed(2)} kg</span>
+              Preview:&nbsp;
+              <span className="font-medium tabular-nums">
+                {previewKg.toFixed(2)} kg
+              </span>
             </span>
           )}
         </div>

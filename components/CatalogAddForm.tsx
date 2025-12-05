@@ -93,7 +93,7 @@ export function CatalogItemFields({
         <legend className="text-xs text-muted-foreground px-1">
           From the package
         </legend>
-        <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-start">
           {/* Serving size (amount on package) */}
           <div>
             <label className="block text-xs text-muted-foreground">
@@ -172,7 +172,7 @@ export function CatalogItemFields({
           Your default serving (for this dog)
         </legend>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-start">
           <div>
             <label className="block text-xs text-muted-foreground">
               Default serving
