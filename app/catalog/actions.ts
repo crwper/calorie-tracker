@@ -13,29 +13,22 @@ function okNum(n: unknown) {
 }
 
 function deriveKcalPerUnit(formData: FormData): number {
-  // Optional: direct kcal_per_unit (for future "advanced" mode or legacy forms)
-  const rawDirect = formData.get('kcal_per_unit');
-  const directStr = rawDirect != null ? String(rawDirect).trim() : '';
-  if (directStr) {
-    const direct = okNum(directStr);
-    return direct;
-  }
-
-  // Default path: Calories in X units → compute kcal_per_unit = kcal / qty
+  // IMPORTANT: do NOT trust client-computed hidden fields.
+  // Always derive from the package fields the user typed.
   const rawLabelKcal = formData.get('label_kcal');
 
-  // IMPORTANT: your form uses `label_amount` (text, may contain "3/4").
-  // Keep a fallback to `label_qty` for any legacy forms.
-  const rawLabelQty = formData.get('label_amount') ?? formData.get('label_qty');
+  // Your UI uses `label_amount` (text, may contain "3/4").
+  // Keep a fallback to `label_qty` only for any legacy forms.
+  const rawLabelAmt = formData.get('label_amount') ?? formData.get('label_qty');
 
-  if (rawLabelKcal == null || rawLabelQty == null) {
+  if (rawLabelKcal == null || rawLabelAmt == null) {
     throw new Error('Calories and serving size are required');
   }
 
   const labelKcal = okNum(rawLabelKcal);
-  const labelQty = okNum(rawLabelQty);
+  const labelAmt = okNum(rawLabelAmt);
 
-  const perUnit = labelKcal / labelQty;
+  const perUnit = labelKcal / labelAmt;
   if (!Number.isFinite(perUnit) || perUnit <= 0) {
     throw new Error('Could not compute kcal per unit');
   }
@@ -46,9 +39,7 @@ function deriveKcalPerUnit(formData: FormData): number {
 
 export async function createCatalogItemAction(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
   // Optional return target + intent
@@ -59,7 +50,7 @@ export async function createCatalogItemAction(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   const unit = String(formData.get('unit') ?? '').trim();
 
-  // NOTE: default_qty is a text input and may be "3/4"
+  // `default_qty` is a text input and may be "3/4"
   const defaultQty = okNum(formData.get('default_qty'));
 
   if (!name || !unit) throw new Error('Name and unit required');
@@ -89,9 +80,7 @@ export async function createCatalogItemAction(formData: FormData) {
 
 export async function updateCatalogItemAction(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
   const id = String(formData.get('id') ?? '');
@@ -100,7 +89,7 @@ export async function updateCatalogItemAction(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   const unit = String(formData.get('unit') ?? '').trim();
 
-  // NOTE: default_qty is a text input and may be "1 1/2"
+  // `default_qty` is a text input and may be "1 1/2"
   const defaultQty = okNum(formData.get('default_qty'));
 
   if (!name || !unit) throw new Error('Name and unit required');
@@ -124,9 +113,7 @@ export async function updateCatalogItemAction(formData: FormData) {
 
 export async function deleteCatalogItemAction(formData: FormData) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
   const id = String(formData.get('id') ?? '');

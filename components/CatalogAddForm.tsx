@@ -33,8 +33,6 @@ export function CatalogItemFields({
     return kcal / amt;
   }, [labelAmount, labelKcal]);
 
-  const perUnitStr = perUnit != null ? perUnit.toFixed(4) : '';
-
   const defaultKcal = useMemo(() => {
     if (perUnit == null) return null;
     const dq = parsePositiveNumber(defaultQty);
@@ -46,9 +44,6 @@ export function CatalogItemFields({
 
   return (
     <>
-      {/* What the server actually uses */}
-      <input type="hidden" name="kcal_per_unit" value={perUnitStr} />
-
       {/* Name / description */}
       <div>
         <label className="block text-xs text-muted-foreground">Name</label>
@@ -121,7 +116,6 @@ export function CatalogItemFields({
           Your default serving (for this dog)
         </legend>
 
-        {/* Use the same grid template so the input column matches Serving size */}
         <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-end">
           <div>
             <label className="block text-xs text-muted-foreground">Default serving</label>
@@ -141,7 +135,6 @@ export function CatalogItemFields({
             <p className="mt-1 text-[11px] text-subtle-foreground">Your usual serving for this dog</p>
           </div>
 
-          {/* Empty columns just to preserve the same grid structure / widths */}
           <div className="hidden sm:block" />
           <div className="hidden sm:block" />
         </div>
@@ -181,7 +174,6 @@ export default function CatalogAddForm({
 
         <CatalogItemFields />
 
-        {/* Actions */}
         <div className="flex gap-2">
           <button
             type="submit"
@@ -204,7 +196,6 @@ export default function CatalogAddForm({
           )}
         </div>
 
-        {/* Because this form lives in a client component, refresh the page data on settle */}
         <RefreshOnActionComplete debounceMs={250} />
       </form>
     </div>
