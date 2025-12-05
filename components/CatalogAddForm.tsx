@@ -1,7 +1,8 @@
 // components/CatalogAddForm.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import { parsePositiveNumber } from '@/lib/quantity';
 
@@ -160,6 +161,21 @@ export function CatalogItemFields({
   );
 }
 
+/** Watch the nearest form; when pending -> settled, call onComplete(). */
+function ResetOnSubmit({ onComplete }: { onComplete: () => void }) {
+  const { pending } = useFormStatus();
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      onComplete();
+    }
+    wasPending.current = pending;
+  }, [pending, onComplete]);
+
+  return null;
+}
+
 export default function CatalogAddForm({
   next,
   createAction,
@@ -167,13 +183,17 @@ export default function CatalogAddForm({
   next?: string | null;
   createAction: (formData: FormData) => Promise<void>;
 }) {
+  // Bump this key to force CatalogItemFields to remount -> clears its internal state.
+  const [resetKey, setResetKey] = useState(0);
+
   return (
     <div className="rounded-lg border bg-card p-4">
       <form action={createAction} className="space-y-3">
         {next ? <input type="hidden" name="next" value={next} /> : null}
 
-        <CatalogItemFields />
+        <CatalogItemFields key={resetKey} />
 
+        {/* Actions */}
         <div className="flex gap-2">
           <button
             type="submit"
@@ -196,6 +216,10 @@ export default function CatalogAddForm({
           )}
         </div>
 
+        {/* When the server action settles, both:
+             - Refresh page data, and
+             - Reset the form fields to their initial, blank state. */}
+        <ResetOnSubmit onComplete={() => setResetKey((k) => k + 1)} />
         <RefreshOnActionComplete debounceMs={250} />
       </form>
     </div>
