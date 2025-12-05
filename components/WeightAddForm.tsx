@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import Alert from '@/components/primitives/Alert';
-import { parsePositiveNumber } from '@/lib/quantity';
+import { parsePositiveDecimal } from '@/lib/quantity';
 
 export default function WeightAddForm({
   defaultDate,
@@ -21,14 +21,14 @@ export default function WeightAddForm({
   const [youDog, setYouDog] = useState('');
   const [weight, setWeight] = useState('');
 
-  // Parse numeric inputs (supporting the same fraction syntax as elsewhere)
+  // Parse numeric inputs as decimals (no fraction syntax).
   const parsedWeight = useMemo(
-    () => parsePositiveNumber(weight),
+    () => parsePositiveDecimal(weight),
     [weight]
   );
-  const parsedYou = useMemo(() => parsePositiveNumber(you), [you]);
+  const parsedYou = useMemo(() => parsePositiveDecimal(you), [you]);
   const parsedYouDog = useMemo(
-    () => parsePositiveNumber(youDog),
+    () => parsePositiveDecimal(youDog),
     [youDog]
   );
 
@@ -139,8 +139,7 @@ export default function WeightAddForm({
             />
             {weightError ? (
               <p className="mt-1 text-[11px] text-alert-error-fg">
-                Enter a positive number or simple fraction (e.g., 12.3, 12
-                1/2).
+                Enter a positive number (e.g., 12.3).
               </p>
             ) : (
               <p className="mt-1 text-[11px] text-subtle-foreground">
@@ -163,7 +162,7 @@ export default function WeightAddForm({
               />
               {youError ? (
                 <p className="mt-1 text-[11px] text-alert-error-fg">
-                  Enter a positive number or simple fraction.
+                  Enter a positive number.
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] text-subtle-foreground">
@@ -186,7 +185,7 @@ export default function WeightAddForm({
               />
               {youDogError ? (
                 <p className="mt-1 text-[11px] text-alert-error-fg">
-                  Enter a positive number or simple fraction.
+                  Enter a positive number.
                 </p>
               ) : diffError ? (
                 <p className="mt-1 text-[11px] text-alert-error-fg">
@@ -212,13 +211,12 @@ export default function WeightAddForm({
           />
         </div>
 
-        {/* Global numeric/fraction error alert */}
+        {/* Global numeric error alert */}
         {hasNumericError && (
           <div className="col-span-full">
             <Alert tone="error">
-              Some weights are invalid. Please use positive numbers or simple
-              fractions (e.g., 12.5, 12 1/2), and ensure “You + dog” is
-              greater than “You”.
+              Some weights are invalid. Please use positive decimal numbers
+              (e.g., 12.5), and ensure “You + dog” is greater than “You”.
             </Alert>
           </div>
         )}

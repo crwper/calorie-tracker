@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import Alert from '@/components/primitives/Alert';
-import { parsePositiveNumber } from '@/lib/quantity';
+import { parsePositiveDecimal } from '@/lib/quantity';
 
 export default function GoalAddForm({
   defaultDate,
@@ -20,7 +20,7 @@ export default function GoalAddForm({
   const [note, setNote] = useState('');
 
   const parsedTarget = useMemo(
-    () => parsePositiveNumber(kcalTarget),
+    () => parsePositiveDecimal(kcalTarget),
     [kcalTarget]
   );
 
@@ -120,7 +120,9 @@ export default function GoalAddForm({
               type="submit"
               name="intent"
               value="create_return"
-              className={`${buttonBase} ${hasError ? disabledButton : ''}`}
+              className={`${buttonBase} ${
+                hasError ? disabledButton : ''
+              }`}
               title="Save and return to the day you came from"
               disabled={hasError}
             >

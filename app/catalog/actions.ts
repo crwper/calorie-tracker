@@ -4,10 +4,16 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { parsePositiveNumber } from '@/lib/quantity';
+import { parsePositiveNumber, parsePositiveDecimal } from '@/lib/quantity';
 
-function okNum(n: unknown) {
+function okQty(n: unknown) {
   const v = parsePositiveNumber(n);
+  if (v == null) throw new Error('Value must be a positive number');
+  return v;
+}
+
+function okDecimal(n: unknown) {
+  const v = parsePositiveDecimal(n);
   if (v == null) throw new Error('Value must be a positive number');
   return v;
 }
@@ -25,8 +31,9 @@ function deriveKcalPerUnit(formData: FormData): number {
     throw new Error('Calories and serving size are required');
   }
 
-  const labelKcal = okNum(rawLabelKcal);
-  const labelAmt = okNum(rawLabelAmt);
+  // Calories must be decimal only; servings may be fractional.
+  const labelKcal = okDecimal(rawLabelKcal);
+  const labelAmt = okQty(rawLabelAmt);
 
   const perUnit = labelKcal / labelAmt;
   if (!Number.isFinite(perUnit) || perUnit <= 0) {
@@ -51,7 +58,7 @@ export async function createCatalogItemAction(formData: FormData) {
   const unit = String(formData.get('unit') ?? '').trim();
 
   // `default_qty` is a text input and may be "3/4"
-  const defaultQty = okNum(formData.get('default_qty'));
+  const defaultQty = okQty(formData.get('default_qty'));
 
   if (!name || !unit) throw new Error('Name and unit required');
 
@@ -90,7 +97,7 @@ export async function updateCatalogItemAction(formData: FormData) {
   const unit = String(formData.get('unit') ?? '').trim();
 
   // `default_qty` is a text input and may be "1 1/2"
-  const defaultQty = okNum(formData.get('default_qty'));
+  const defaultQty = okQty(formData.get('default_qty'));
 
   if (!name || !unit) throw new Error('Name and unit required');
 

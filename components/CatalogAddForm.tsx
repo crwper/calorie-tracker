@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
-import { parsePositiveNumber } from '@/lib/quantity';
+import { parsePositiveNumber, parsePositiveDecimal } from '@/lib/quantity';
 import Alert from '@/components/primitives/Alert';
 
 export type CatalogItemFieldsProps = {
@@ -32,17 +32,19 @@ export function CatalogItemFields({
   const [defaultQty, setDefaultQty] = useState(initialDefaultQty);
 
   // Parsed numeric values
+  // Servings may be fractional:
   const parsedLabelAmount = useMemo(
     () => parsePositiveNumber(labelAmount),
     [labelAmount]
   );
-  const parsedLabelKcal = useMemo(
-    () => parsePositiveNumber(labelKcal),
-    [labelKcal]
-  );
   const parsedDefaultQty = useMemo(
     () => parsePositiveNumber(defaultQty),
     [defaultQty]
+  );
+  // Calories must be decimal-only:
+  const parsedLabelKcal = useMemo(
+    () => parsePositiveDecimal(labelKcal),
+    [labelKcal]
   );
 
   // Error flags: only treat as an error if the field is non-empty but unparsable.
@@ -143,9 +145,7 @@ export function CatalogItemFields({
             </label>
             <input
               name="label_kcal"
-              type="number"
-              step="any"
-              min="0"
+              type="text"
               inputMode="decimal"
               value={labelKcal}
               onChange={(e) => setLabelKcal(e.currentTarget.value)}
@@ -277,8 +277,9 @@ export default function CatalogAddForm({
         {/* Global alert if any numeric field is invalid */}
         {hasNumericError && (
           <Alert tone="error">
-            Some quantities are invalid. Please use positive numbers or simple
-            fractions like <code>3/4</code> or <code>1 1/2</code>.
+            Some values are invalid. Servings can use positive numbers or simple
+            fractions like <code>3/4</code> or <code>1 1/2</code>, and calories
+            must be positive numbers.
           </Alert>
         )}
 
