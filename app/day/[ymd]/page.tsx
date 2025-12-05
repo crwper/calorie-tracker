@@ -137,9 +137,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
         </nav>
       </div>
 
-      {/* Unified "Add to today" section with labeled subsections */}
+      {/* Unified "Add to this day" section with labeled subsections */}
       <section className="space-y-2">
-        <h2 className="font-semibold">Add to today</h2>
+        <h2 className="font-semibold">Add to this day</h2>
         <div className="rounded-lg border bg-card p-4 space-y-4">
           {/* catalogpage subsection */}
           <div>
