@@ -15,7 +15,7 @@ export type CatalogItemFieldsProps = {
 
 export function CatalogItemFields({
   initialName = '',
-  initialUnit = 'cup',
+  initialUnit = '',
   initialLabelAmount = '',
   initialLabelKcal = '',
   initialDefaultQty = '',
