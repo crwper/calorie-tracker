@@ -3,37 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
-
-// Parse numbers, with support for simple fractions like "3/4" or "1 1/2".
-function numOrNull(raw: string) {
-  const s = raw.trim();
-  if (!s) return null;
-
-  // Mixed number: "1 1/2"
-  let m = /^(\d+)\s+(\d+)\s*\/\s*(\d+)$/.exec(s);
-  if (m) {
-    const whole = Number(m[1]);
-    const num = Number(m[2]);
-    const den = Number(m[3]);
-    if (!den) return null;
-    const n = whole + num / den;
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
-
-  // Simple fraction: "3/4"
-  m = /^(\d+)\s*\/\s*(\d+)$/.exec(s);
-  if (m) {
-    const num = Number(m[1]);
-    const den = Number(m[2]);
-    if (!den) return null;
-    const n = num / den;
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
-
-  // Normal decimal / integer
-  const n = Number(s);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
+import { parsePositiveNumber } from '@/lib/quantity';
 
 export type CatalogItemFieldsProps = {
   initialName?: string;
@@ -57,8 +27,8 @@ export function CatalogItemFields({
   const [defaultQty, setDefaultQty] = useState(initialDefaultQty);
 
   const perUnit = useMemo(() => {
-    const amt = numOrNull(labelAmount);
-    const kcal = numOrNull(labelKcal);
+    const amt = parsePositiveNumber(labelAmount);
+    const kcal = parsePositiveNumber(labelKcal);
     if (!amt || !kcal) return null;
     return kcal / amt;
   }, [labelAmount, labelKcal]);
@@ -67,7 +37,7 @@ export function CatalogItemFields({
 
   const defaultKcal = useMemo(() => {
     if (perUnit == null) return null;
-    const dq = numOrNull(defaultQty);
+    const dq = parsePositiveNumber(defaultQty);
     if (!dq) return null;
     return perUnit * dq;
   }, [perUnit, defaultQty]);
@@ -93,15 +63,11 @@ export function CatalogItemFields({
 
       {/* From the package */}
       <fieldset className="space-y-2 border rounded px-3 py-2">
-        <legend className="text-xs text-muted-foreground px-1">
-          From the package
-        </legend>
+        <legend className="text-xs text-muted-foreground px-1">From the package</legend>
         <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-end">
           {/* Serving size (amount on package) */}
           <div>
-            <label className="block text-xs text-muted-foreground">
-              Serving size
-            </label>
+            <label className="block text-xs text-muted-foreground">Serving size</label>
             <input
               name="label_amount"
               type="text"
@@ -112,9 +78,7 @@ export function CatalogItemFields({
               placeholder="1 or 3/4"
               required
             />
-            <p className="mt-1 text-[11px] text-subtle-foreground">
-              e.g., 1, 3/4, 100
-            </p>
+            <p className="mt-1 text-[11px] text-subtle-foreground">e.g., 1, 3/4, 100</p>
           </div>
 
           {/* Unit (used for both package + default serving) */}
@@ -128,16 +92,12 @@ export function CatalogItemFields({
               placeholder="cup"
               required
             />
-            <p className="mt-1 text-[11px] text-subtle-foreground">
-              e.g., cup, g, piece
-            </p>
+            <p className="mt-1 text-[11px] text-subtle-foreground">e.g., cup, g, piece</p>
           </div>
 
           {/* Calories for that serving */}
           <div>
-            <label className="block text-xs text-muted-foreground">
-              Calories
-            </label>
+            <label className="block text-xs text-muted-foreground">Calories</label>
             <input
               name="label_kcal"
               type="number"
@@ -150,9 +110,7 @@ export function CatalogItemFields({
               placeholder="365"
               required
             />
-            <p className="mt-1 text-[11px] text-subtle-foreground">
-              kcal for that serving
-            </p>
+            <p className="mt-1 text-[11px] text-subtle-foreground">kcal for that serving</p>
           </div>
         </div>
       </fieldset>
@@ -166,9 +124,7 @@ export function CatalogItemFields({
         {/* Use the same grid template so the input column matches Serving size */}
         <div className="grid grid-cols-1 sm:grid-cols-[1.1fr_0.9fr_1fr] gap-2 items-end">
           <div>
-            <label className="block text-xs text-muted-foreground">
-              Default serving
-            </label>
+            <label className="block text-xs text-muted-foreground">Default serving</label>
             <div className="mt-1 flex items-center gap-2">
               <input
                 name="default_qty"
@@ -180,13 +136,9 @@ export function CatalogItemFields({
                 placeholder="0.5 or 3/4"
                 required
               />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {unitLabel}
-              </span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{unitLabel}</span>
             </div>
-            <p className="mt-1 text-[11px] text-subtle-foreground">
-              Your usual serving for this dog
-            </p>
+            <p className="mt-1 text-[11px] text-subtle-foreground">Your usual serving for this dog</p>
           </div>
 
           {/* Empty columns just to preserve the same grid structure / widths */}
@@ -198,21 +150,14 @@ export function CatalogItemFields({
       {/* Preview combining both groups */}
       <div className="text-xs text-muted-foreground">
         {perUnit == null ? (
-          <span>
-            Fill in serving size and calories from the package to see a preview.
-          </span>
+          <span>Fill in serving size and calories from the package to see a preview.</span>
         ) : (
           <>
-            1 {unitLabel} ≈{' '}
-            <span className="tabular-nums">{perUnit.toFixed(2)}</span> kcal
+            1 {unitLabel} ≈ <span className="tabular-nums">{perUnit.toFixed(2)}</span> kcal
             {defaultKcal != null && defaultQty && (
               <>
-                {' · '}Default:{' '}
-                <span className="tabular-nums">{defaultQty}</span> {unitLabel} ≈{' '}
-                <span className="tabular-nums">
-                  {defaultKcal.toFixed(0)}
-                </span>{' '}
-                kcal
+                {' · '}Default: <span className="tabular-nums">{defaultQty}</span> {unitLabel} ≈{' '}
+                <span className="tabular-nums">{defaultKcal.toFixed(0)}</span> kcal
               </>
             )}
           </>
