@@ -442,17 +442,17 @@ function SortableEntry({
         <button
           type="button"
           aria-label="Drag to reorder"
-          className="h-full w-4 md:w-[18px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none bg-control disabled:opacity-60 outline-none focus:outline-none"
+          className="h-full w-10 md:w-[18px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none bg-control disabled:opacity-60 outline-none focus:outline-none focus:ring-2 focus:ring-control-ring rounded"
           {...(mounted ? attributes : {})}
           {...(mounted ? listeners : {})}
           suppressHydrationWarning
           disabled={disabled}
         >
-          <Grip />
+          <Grip className="text-handle text-lg md:text-base" />
         </button>
       }
       content={
-        <div className="grid grid-cols-[22px_1fr_auto] gap-x-2 gap-y-0">
+        <div className="grid grid-cols-[44px_1fr_auto] md:grid-cols-[22px_1fr_auto] gap-x-2 gap-y-0">
           {/* Col 1: checkbox spans both rows */}
           <div className="col-[1/2] row-span-2 flex items-center justify-center">
             <CheckboxStatusForm
@@ -751,68 +751,73 @@ function CheckboxStatusForm({
   const lastOpRef = useRef<string | null>(null);
 
   return (
-    <input
-      id={`eaten-${entryId}`}
-      type="checkbox"
-      className="
-        h-4 w-4 cursor-pointer
-        border border-input rounded
-        accent-control-accent
-        outline-none focus:ring-2 focus:ring-control-ring
-      "
-      aria-label="Eaten"
+    <label
+      className="flex items-center justify-center h-11 w-11 md:h-auto md:w-auto cursor-pointer"
       title={currentStatus === 'eaten' ? 'Mark as planned' : 'Mark as eaten'}
-      checked={currentStatus === 'eaten'}
-      onChange={(e) => {
-        // Cancel any pending qty debounce; we will send qty ourselves
-        onPreSubmit();
+    >
+      <input
+        id={`eaten-${entryId}`}
+        type="checkbox"
+        className="
+          h-5 w-5 md:h-4 md:w-4
+          cursor-pointer
+          border border-input rounded
+          accent-control-accent
+          outline-none focus:ring-2 focus:ring-control-ring
+        "
+        aria-label="Eaten"
+        checked={currentStatus === 'eaten'}
+        onChange={(e) => {
+          // Cancel any pending qty debounce; we will send qty ourselves
+          onPreSubmit();
 
-        const prev = currentStatus;
-        const next: 'planned' | 'eaten' = e.currentTarget.checked ? 'eaten' : 'planned';
+          const prev = currentStatus;
+          const next: 'planned' | 'eaten' = e.currentTarget.checked ? 'eaten' : 'planned';
 
-        // Optimistic UI first (keeps checkbox controlled by React, no form-reset flicker)
-        onSubmitOptimistic(next);
+          // Optimistic UI first (keeps checkbox controlled by React, no form-reset flicker)
+          onSubmitOptimistic(next);
 
-        // Read latest qty and fall back to initial
-        const latest = getLatestQty ? getLatestQty() : null;
-        const fallback = parseFloat(String(initialQtyStr)) || 0;
-        const qtyToSend =
-          latest != null && Number.isFinite(latest) && latest > 0
-            ? latest
-            : Number.isFinite(fallback) && fallback > 0
-            ? fallback
-            : 1; // last-resort safety; server requires > 0
+          // Read latest qty and fall back to initial
+          const latest = getLatestQty ? getLatestQty() : null;
+          const fallback = parseFloat(String(initialQtyStr)) || 0;
+          const qtyToSend =
+            latest != null && Number.isFinite(latest) && latest > 0
+              ? latest
+              : Number.isFinite(fallback) && fallback > 0
+              ? fallback
+              : 1; // last-resort safety; server requires > 0
 
-        const opId = crypto.randomUUID();
-        lastOpRef.current = opId;
+          const opId = crypto.randomUUID();
+          lastOpRef.current = opId;
 
-        registerPendingOp({
-          id: opId,
-          kind: 'update_qty_and_status',
-          entryIds: [entryId],
-          startedAt: Date.now(),
-        });
+          registerPendingOp({
+            id: opId,
+            kind: 'update_qty_and_status',
+            entryIds: [entryId],
+            startedAt: Date.now(),
+          });
 
-        const fd = new FormData();
-        fd.set('date', selectedYMD);
-        fd.set('entry_id', entryId);
-        fd.set('next_status', next);
-        fd.set('qty', String(qtyToSend));
-        fd.set('client_op_id', opId);
+          const fd = new FormData();
+          fd.set('date', selectedYMD);
+          fd.set('entry_id', entryId);
+          fd.set('next_status', next);
+          fd.set('qty', String(qtyToSend));
+          fd.set('client_op_id', opId);
 
-        void updateEntryQtyAndStatusAction(fd).catch((err) => {
-          console.error(err);
+          void updateEntryQtyAndStatusAction(fd).catch((err) => {
+            console.error(err);
 
-          // Clear the pending-op, otherwise “Saving…” can get stuck
-          ackOp(opId);
+            // Clear the pending-op, otherwise “Saving…” can get stuck
+            ackOp(opId);
 
-          // Only rollback if this is still the latest attempted toggle
-          if (lastOpRef.current === opId) {
-            onSubmitOptimistic(prev);
-            alert('Update failed. Please try again.');
-          }
-        });
-      }}
-    />
+            // Only rollback if this is still the latest attempted toggle
+            if (lastOpRef.current === opId) {
+              onSubmitOptimistic(prev);
+              alert('Update failed. Please try again.');
+            }
+          });
+        }}
+      />
+    </label>
   );
 }

@@ -20,9 +20,11 @@ export default function DeleteButton({
   size = 'sm',
   ...props
 }: DeleteButtonProps) {
-  const dims = size === 'md' ? 'h-5 w-5' : 'h-4 w-4';
+  const dims =
+    size === 'md' ? 'h-6 w-6 md:h-5 md:w-5' : 'h-5 w-5 md:h-4 md:w-4';
+
   const klass =
-    'inline-flex h-7 w-7 items-center justify-center rounded ' +
+    'inline-flex h-11 w-11 md:h-7 md:w-7 items-center justify-center rounded ' +
     'hover:bg-button-danger-hover focus:outline-none focus:ring-2 focus:ring-danger';
 
   return (

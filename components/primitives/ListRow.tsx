@@ -17,7 +17,7 @@ const ListRow = forwardRef<HTMLLIElement, ListRowProps>(
       <li ref={ref} style={style} className={`p-2 flex items-stretch gap-2 ${className}`}>
         <div className="shrink-0 self-stretch">{handle}</div>
         <div className="flex-1">{content}</div>
-        <div className="shrink-0 self-stretch flex items-center justify-center w-7">
+        <div className="shrink-0 self-stretch flex items-center justify-center min-w-[44px] md:min-w-7">
           {actions}
         </div>
       </li>
