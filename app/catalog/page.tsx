@@ -5,6 +5,7 @@ import { createCatalogItemAction, updateCatalogItemAction } from './actions';
 import CatalogAddForm from '@/components/CatalogAddForm';
 import CatalogRow from '@/components/CatalogRow';
 import RealtimeBridge from '@/components/realtime/RealtimeBridge';
+import { safeNextPath } from '@/lib/safeNext';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +15,8 @@ export default async function CatalogPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const sp = await searchParams;
-  const rawNext = typeof sp.next === 'string' ? sp.next : null;
   // Safety: only allow relative paths
-  const next = rawNext && rawNext.startsWith('/') ? rawNext : null;
+  const next = safeNextPath(sp.next);
 
   const supabase = await createClient();
 

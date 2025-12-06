@@ -1,7 +1,9 @@
+// app/auth-actions.ts
 'use server';
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { safeNextPath } from '@/lib/safeNext';
 
 export async function signupAction(formData: FormData) {
   const supabase = await createClient();
@@ -26,9 +28,10 @@ export async function loginAction(formData: FormData) {
   const supabase = await createClient();
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const nextRaw = String(formData.get('next') ?? '/');
-  // Safety: only allow relative paths
-  const next = nextRaw.startsWith('/') ? nextRaw : '/';
+
+  // Read raw `next` from the form, sanitize it, then fall back to "/"
+  const nextSafe = safeNextPath(formData.get('next'));
+  const next = nextSafe ?? '/';
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {

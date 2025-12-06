@@ -9,6 +9,7 @@ import GoalAddForm from '@/components/GoalAddForm';
 import DataList from '@/components/primitives/DataList';
 import GoalListRow from '@/components/GoalListRow';
 import RealtimeBridge from '@/components/realtime/RealtimeBridge';
+import { safeNextPath } from '@/lib/safeNext';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,7 @@ export default async function GoalsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const rawNext = typeof sp.next === 'string' ? sp.next : null;
-  const next = rawNext && rawNext.startsWith('/') ? rawNext : null;
+  const next = safeNextPath(sp.next);
 
   const supabase = await createClient();
 

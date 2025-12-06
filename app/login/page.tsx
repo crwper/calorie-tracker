@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { loginAction } from '../auth-actions';
 import Alert from '@/components/primitives/Alert';
+import { safeNextPath } from '@/lib/safeNext';
 
 export default async function LoginPage({
   searchParams,
@@ -10,7 +11,10 @@ export default async function LoginPage({
   const sp = await searchParams;
   const checkEmail = !!sp['check-email'];
   const err = typeof sp.error === 'string' ? sp.error : null;
-  const next = typeof sp.next === 'string' ? sp.next : '/';
+
+    // Read raw `next` from the form, sanitize it, then fall back to "/"
+  const nextSafe = safeNextPath(sp.next);
+  const next = nextSafe ?? '/';
 
   return (
     <main className="mx-auto max-w-sm p-6 space-y-4">

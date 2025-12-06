@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isValidYMD, todayYMDVancouver } from '@/lib/dates';
+import { safeNextPath } from '@/lib/safeNext';
 
 function okInt(n: unknown) {
   const v = Number(n);
@@ -21,7 +22,7 @@ export async function createGoalAction(formData: FormData) {
 
   // Optional return target + intent
   const rawNext = String(formData.get('next') ?? '');
-  const next = rawNext.startsWith('/') ? rawNext : null;
+  const next = safeNextPath(rawNext);
   const intent = String(formData.get('intent') ?? 'create');
 
   const dateParam = String(formData.get('start_date') ?? '');
