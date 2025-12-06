@@ -1,6 +1,7 @@
+// components/auth/ClientAuthSync.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { getBrowserClient } from '@/lib/supabase/client';
 
 export default function ClientAuthSync({
@@ -8,33 +9,29 @@ export default function ClientAuthSync({
   accessToken,
   refreshToken,
 }: {
-  serverUserId: string | null;        // user id from server, or null if signed out
-  accessToken?: string | null;        // from server session (if present)
-  refreshToken?: string | null;       // from server session (if present)
+  serverUserId: string | null;
+  accessToken?: string | null;
+  refreshToken?: string | null;
 }) {
-  const ran = useRef(false);
-
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
+    const supabase = getBrowserClient();
+    let cancelled = false;
 
     const sync = async () => {
-      const supabase = getBrowserClient();
-      const { data: client } = await supabase.auth.getUser();
-      const clientUserId = client.user?.id ?? null;
+      const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
+
+      const clientUserId = data.user?.id ?? null;
 
       // Server says logged out → ensure browser is logged out too
       if (!serverUserId) {
-        if (clientUserId) {
-          await supabase.auth.signOut(); // clears localStorage tokens
-        }
+        if (clientUserId) await supabase.auth.signOut();
         return;
       }
 
       // Server says logged in → ensure browser has same user
-      if (serverUserId && clientUserId === serverUserId) return; // already in sync
+      if (clientUserId === serverUserId) return;
 
-      // Need to hydrate: set browser session from server tokens
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({
           access_token: accessToken,
@@ -44,6 +41,9 @@ export default function ClientAuthSync({
     };
 
     void sync();
+    return () => {
+      cancelled = true;
+    };
   }, [serverUserId, accessToken, refreshToken]);
 
   return null;
