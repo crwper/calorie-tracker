@@ -442,7 +442,20 @@ function SortableEntry({
         <button
           type="button"
           aria-label="Drag to reorder"
-          className="h-full w-10 md:w-[18px] flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none bg-control disabled:opacity-60 outline-none focus:outline-none focus:ring-2 focus:ring-control-ring rounded"
+          className="
+            relative
+            h-full w-4 md:w-[18px]
+            flex items-center justify-center
+            cursor-grab active:cursor-grabbing
+            select-none touch-none bg-control disabled:opacity-60
+            rounded focus:outline-none focus:ring-2 focus:ring-control-ring
+
+            /* Mobile hit-slope WITHOUT widening the column */
+            before:content-['']
+            before:absolute before:inset-y-0
+            before:-left-5 before:-right-2
+            md:before:inset-0
+          "
           {...(mounted ? attributes : {})}
           {...(mounted ? listeners : {})}
           suppressHydrationWarning
