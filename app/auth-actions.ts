@@ -9,10 +9,16 @@ export async function signupAction(formData: FormData) {
   const supabase = await createClient();
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
+  const confirm = String(formData.get('confirm_password') ?? '');
 
-  // Basic validation
   if (!email) throw new Error('Email required');
   if (password.length < 6) throw new Error('Password must be at least 6 characters');
+
+  // ✅ Server-side confirm check
+  if (!confirm || confirm !== password) {
+    const qs = new URLSearchParams({ error: 'Passwords do not match.' });
+    redirect(`/signup?${qs.toString()}`);
+  }
 
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) {
@@ -20,7 +26,6 @@ export async function signupAction(formData: FormData) {
     redirect(`/signup?${qs.toString()}`);
   }
 
-  // If email confirmation is on, the session will be null until confirmed.
   redirect('/login?check-email=1');
 }
 
