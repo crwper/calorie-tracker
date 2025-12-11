@@ -4,6 +4,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { safeNextPath } from '@/lib/safeNext';
+import { headers } from 'next/headers';
 
 export async function signupAction(formData: FormData) {
   const supabase = await createClient();
@@ -60,4 +61,23 @@ export async function logoutAction() {
   await supabase.auth.getUser();
 
   redirect('/login');
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim();
+  if (!email) redirect('/forgot-password?error=Email%20required');
+
+  const supabase = await createClient();
+
+  const origin =
+    headers().get('origin') ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    'http://localhost:3000';
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/reset-password`,
+  });
+
+  if (error) redirect(`/forgot-password?error=${encodeURIComponent(error.message)}`);
+  redirect('/forgot-password?sent=1');
 }

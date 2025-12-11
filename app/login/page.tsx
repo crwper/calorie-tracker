@@ -12,6 +12,7 @@ export default async function LoginPage({
   const checkEmail = !!sp['check-email'];
   const err = typeof sp.error === 'string' ? sp.error : null;
   const next = typeof sp.next === 'string' ? sp.next : '/';
+  const reset = sp.reset === '1';
 
   return (
     <main className="mx-auto max-w-sm p-6 space-y-4">
@@ -20,11 +21,14 @@ export default async function LoginPage({
       {checkEmail && (
         <Alert tone="success">Check your email to confirm your account, then log in.</Alert>
       )}
+
       {err && (
         <Alert tone="error">
           <span className="font-medium">Error:</span> {err}
         </Alert>
       )}
+
+      {reset && <Alert tone="success">Password updated. Please log in.</Alert>}
 
       <form action={loginAction} className="space-y-3">
         <input type="hidden" name="next" value={next} />
@@ -48,6 +52,10 @@ export default async function LoginPage({
 
       <p className="text-sm text-muted-foreground">
         No account? <Link className="underline" href="/signup">Sign up</Link>
+      </p>
+
+      <p className="text-sm text-muted-foreground">
+        <Link className="underline" href="/forgot-password">Forgot your password?</Link>
       </p>
     </main>
   );
