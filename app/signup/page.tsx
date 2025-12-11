@@ -21,7 +21,7 @@ export default async function SignupPage({
         </Alert>
       )}
 
-      <SignupForm signupAction={signupAction} />
+      <SignupForm signupAction={signupAction} initialError={err} />
 
       <p className="text-sm text-muted-foreground">
         Already have an account? <Link className="underline" href="/login">Log in</Link>
