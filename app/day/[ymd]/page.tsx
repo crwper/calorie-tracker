@@ -15,6 +15,7 @@ import CatalogChipPicker from '@/components/CatalogChipPicker';
 import RefreshNowButton from '@/components/dev/RefreshNowButton';
 import DayEntriesRealtime from '@/components/realtime/DayEntriesRealtime';
 import PendingOpsDebug from '@/components/realtime/PendingOpsDebug';
+import { expectNoError } from '@/lib/supabase/expect';
 
 export default async function DayPage({ params }: { params: Promise<{ ymd: string }> }) {
   const { ymd } = await params;
@@ -53,11 +54,16 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   const dayIdStr = String(dayId);
 
   // Fetch this day's entries
-  const { data: entriesData } = await supabase
+  const entriesResult = await supabase
     .from('entries')
     .select('id, name, qty, unit, kcal_snapshot, status, created_at, ordering, kcal_per_unit_snapshot')
     .eq('day_id', dayIdStr)
     .order('ordering', { ascending: true });
+
+  const entriesData = expectNoError(
+    entriesResult,
+    `loading entries for day ${dayIdStr}`
+  );
 
   const entries: Array<{
     id: string;
@@ -69,7 +75,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
     created_at: string;
     kcal_per_unit_snapshot: number | null;
     ordering?: number;
-  }> = (entriesData ?? []).map((e) => {
+  }> = entriesData.map((e) => {
     const rawOrdering = (e as { ordering?: unknown }).ordering;
     const ordering =
       typeof rawOrdering === 'number'
