@@ -214,6 +214,7 @@ export default function ChartsClient({
   const fmtDate = (t: number) => {
     try {
       return new Date(t).toLocaleDateString(undefined, {
+        timeZone: 'UTC',           // ✅ keep labels stable
         month: 'short',
         day: 'numeric',
         year: 'numeric',

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 function toUTCms(ymd: string): number {
   const [y, m, d] = ymd.split('-').map(Number);
-  return Date.UTC(y, m - 1, d);
+  return Date.UTC(y, m - 1, d, 12, 0, 0); // ✅ UTC noon
 }
 
 // NOTE: numeric columns come back as string; accept string | number and cast later.
