@@ -19,7 +19,15 @@ export default async function LoginPage({
       <h1 className="text-xl font-bold">Log in</h1>
 
       {checkEmail && (
-        <Alert tone="success">Check your email to confirm your account, then log in.</Alert>
+        <Alert tone="success">
+          Check your email to confirm your account, then log in.
+        </Alert>
+      )}
+
+      {reset && (
+        <Alert tone="success">
+          Password updated. Please log in.
+        </Alert>
       )}
 
       {err && (
@@ -28,14 +36,17 @@ export default async function LoginPage({
         </Alert>
       )}
 
-      {reset && <Alert tone="success">Password updated. Please log in.</Alert>}
-
       <form action={loginAction} className="space-y-3">
         <input type="hidden" name="next" value={next} />
 
         <div className="flex flex-col">
           <label className="text-xs text-muted-foreground">Email</label>
-          <input name="email" type="email" required className="border rounded px-2 py-1" />
+          <input
+            name="email"
+            type="email"
+            required
+            className="border rounded px-2 py-1"
+          />
         </div>
 
         <PasswordField
@@ -45,18 +56,27 @@ export default async function LoginPage({
           autoComplete="current-password"
         />
 
-        <button type="submit" className="rounded border px-3 py-1 text-sm hover:bg-control-hover">
+        <button
+          type="submit"
+          className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+        >
           Log in
         </button>
       </form>
 
-      <p className="text-sm text-muted-foreground">
-        No account? <Link className="underline" href="/signup">Sign up</Link>
-      </p>
-
-      <p className="text-sm text-muted-foreground">
-        <Link className="underline" href="/forgot-password">Forgot your password?</Link>
-      </p>
+      <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          No account?{' '}
+          <Link className="underline" href="/signup">
+            Sign up
+          </Link>
+        </span>
+        <span>
+          <Link className="underline" href="/forgot-password">
+            Forgot your password?
+          </Link>
+        </span>
+      </div>
     </main>
   );
 }
