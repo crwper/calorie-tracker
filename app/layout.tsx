@@ -2,6 +2,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from 'next/link';
+import Image from "next/image";
+import icon from "./icon.png";
 import "./globals.css";
 import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from './auth-actions';
@@ -30,7 +32,6 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Snack Dragon Calorie Counter',
-  manifest: "/manifest.webmanifest",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -55,7 +56,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <header className="border-b bg-header">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
-            <Link href="/" className="font-semibold">Snack Dragon Calorie Counter</Link>
+            <Link href="/" className="flex items-center gap-2 font-semibold">
+              <Image 
+                src={icon} 
+                alt="Snack Dragon Logo" 
+                width={32} 
+                height={32} 
+                className="rounded-sm"
+              />
+              <span>Snack Dragon Calorie Counter</span>
+            </Link>
             <div className="text-sm">
               {process.env.NODE_ENV !== 'production' ? (
                 <span className="ml-2">
