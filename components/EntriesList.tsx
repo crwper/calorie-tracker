@@ -33,15 +33,16 @@ import {
   updateEntryQtyAndStatusAction,
   deleteEntryAction,
 } from '@/app/actions';
-import DeleteButton from '@/components/primitives/DeleteButton';
 import DataList from '@/components/primitives/DataList';
 import ListRow from '@/components/primitives/ListRow';
 import Grip from '@/components/icons/Grip';
+import Trash from '@/components/icons/Trash';
 import {
   registerPendingOp,
   hasSavingOpForEntry,
   subscribeToPendingOps,
   ackOp,
+  completeOp,
 } from '@/components/realtime/opRegistry';
 import useStickyBoolean from '@/hooks/useStickyBoolean';
 
@@ -106,32 +107,35 @@ function useIsMounted() {
   return m;
 }
 
-// Debounce a form.requestSubmit() call
-function useDebouncedSubmit(delay = 600) {
+// Debounce an arbitrary callback
+function useDebouncedCallback(delay = 600) {
   const t = useRef<number | null>(null);
 
-  // beforeSubmit(opId) will be called right before requestSubmit()
-  const submit = (
-    form: HTMLFormElement,
-    beforeSubmit: (opId: string) => void
-  ) => {
-    if (t.current) window.clearTimeout(t.current);
-    t.current = window.setTimeout(() => {
-      const opId = crypto.randomUUID();
-      beforeSubmit(opId);
-      form.requestSubmit();
-      t.current = null;
-    }, delay);
-  };
+  const schedule = useCallback(
+    (fn: () => void) => {
+      if (t.current) window.clearTimeout(t.current);
+      t.current = window.setTimeout(() => {
+        fn();
+        t.current = null;
+      }, delay);
+    },
+    [delay]
+  );
 
-  const cancel = () => {
+  const cancel = useCallback(() => {
     if (t.current) {
       window.clearTimeout(t.current);
       t.current = null;
     }
-  };
+  }, []);
 
-  return { submit, cancel };
+  useEffect(() => {
+    return () => {
+      if (t.current) window.clearTimeout(t.current);
+    };
+  }, []);
+
+  return { schedule, cancel };
 }
 
 /**
@@ -258,6 +262,10 @@ export default function EntriesList({
         client_op_id: opId,
       });
 
+      // Clear Saving… immediately on server completion.
+      // Keep the op briefly so Realtime echoes can still match & be ignored.
+      completeOp(opId);
+
       // still no router.refresh; rely on optimistic + Realtime
     } catch (err) {
       console.error(err);
@@ -336,6 +344,13 @@ export default function EntriesList({
     setItems((prev) => prev.filter((it) => it.id !== id));
   }
 
+  function restoreEntry(entry: Entry) {
+    setItems((prev) => {
+      if (prev.some((e) => e.id === entry.id)) return prev;
+      return sortByOrdering([...prev, entry]);
+    });
+  }
+
   if (items.length === 0) {
     return (
       <DataList>
@@ -370,6 +385,7 @@ export default function EntriesList({
                 onQtyOptimistic={applyQtyOptimistic}
                 onStatusOptimistic={applyStatusOptimistic}
                 onDeleteOptimistic={applyDeleteOptimistic}
+                onRestoreDeleted={restoreEntry}
               />
             ))}
           </DataList>
@@ -411,6 +427,7 @@ type SortableEntryProps = {
   onQtyOptimistic: (id: string, qty: number) => void;
   onStatusOptimistic: (id: string, next: 'planned' | 'eaten') => void;
   onDeleteOptimistic: (id: string) => void;
+  onRestoreDeleted: (entry: Entry) => void;
 };
 
 function SortableEntry({
@@ -420,6 +437,7 @@ function SortableEntry({
   onQtyOptimistic,
   onStatusOptimistic,
   onDeleteOptimistic,
+  onRestoreDeleted,
 }: SortableEntryProps) {
   const mounted = useIsMounted();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -519,68 +537,88 @@ function SortableEntry({
         </div>
       }
       actions={
-        <EntryDeleteForm
-          entryId={e.id}
+        <EntryDeleteButton
+          entry={e}
           selectedYMD={selectedYMD}
           onDeleteOptimistic={onDeleteOptimistic}
+          onRestoreDeleted={onRestoreDeleted}
         />
       }
     />
   );
 }
 
-function EntryDeleteForm({
-  entryId,
+function EntryDeleteButton({
+  entry,
+  // selectedYMD is not required by deleteEntryAction today, but keeping it here
+  // makes it easy to add later if you choose (and keeps the call sites stable).
   selectedYMD,
   onDeleteOptimistic,
+  onRestoreDeleted,
 }: {
-  entryId: string;
+  entry: Entry;
   selectedYMD: string;
-  onDeleteOptimistic?: (id: string) => void;
+  onDeleteOptimistic: (id: string) => void;
+  onRestoreDeleted: (entry: Entry) => void;
 }) {
-  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
+  const onClick = () => {
+    const ok = window.confirm('Delete this entry?');
+    if (!ok) return;
 
-  const handleSubmit = () => {
-    // As soon as the user confirms, optimistically drop the row.
-    onDeleteOptimistic?.(entryId);
+    // Optimistic UI first
+    onDeleteOptimistic(entry.id);
 
-    // Let the form submit normally, but stamp + register op-id first.
     const opId = crypto.randomUUID();
-    if (clientOpInputRef.current) {
-      clientOpInputRef.current.value = opId;
-    }
     registerPendingOp({
       id: opId,
       kind: 'delete',
-      entryIds: [entryId],
+      entryIds: [entry.id],
       startedAt: Date.now(),
     });
-    // no preventDefault: we want the submission to go ahead
+
+    void (async () => {
+      try {
+        const fd = new FormData();
+        fd.set('entry_id', entry.id);
+        fd.set('date', selectedYMD);
+        fd.set('client_op_id', opId);
+
+        await deleteEntryAction(fd);
+
+        // Clear Saving… immediately on server completion
+        completeOp(opId);
+      } catch (err) {
+        console.error(err);
+        ackOp(opId);
+
+        // Rollback optimistic delete
+        onRestoreDeleted(entry);
+
+        alert('Delete failed. Please try again.');
+      }
+    })();
   };
 
+  const klass =
+    'inline-flex h-11 w-11 md:h-7 md:w-7 items-center justify-center rounded ' +
+    'hover:bg-button-danger-hover focus:outline-none focus:ring-2 focus:ring-danger';
+
+  const dims = 'h-5 w-5 md:h-4 md:w-4';
+
   return (
-    <form onSubmit={handleSubmit}>
-      <input type="hidden" name="entry_id" value={entryId} />
-      <input type="hidden" name="date" value={selectedYMD} />
-      <input
-        ref={clientOpInputRef}
-        type="hidden"
-        name="client_op_id"
-        defaultValue=""
-      />
-      <DeleteButton
-        formAction={deleteEntryAction}
-        inlineInParentForm
-        title="Delete entry"
-        aria-label="Delete entry"
-        confirmMessage="Delete this entry?"
-        withRefresh={false}   // no auto router.refresh; EntriesList handles UI optimistically
-      />
-    </form>
+    <button
+      type="button"
+      onClick={onClick}
+      className={klass}
+      aria-label="Delete entry"
+      title="Delete entry"
+    >
+      <Trash className={dims} aria-hidden="true" />
+    </button>
   );
 }
 
-/* ----- Auto-save qty sub-component (native spinner only) ----- */
+/* ----- Auto-save qty sub-component (awaited server action) ----- */
 
 export type AutoSaveQtyFormHandle = {
   commitNow: () => void;
@@ -602,32 +640,31 @@ const AutoSaveQtyForm = forwardRef<
   { entryId, unit, initialQty, selectedYMD, onQtyOptimistic, readOnly = false },
   ref
 ) {
-  // IMPORTANT: the visible <input/> is NOT inside the server-action form.
-  // The form is hidden and used only for requestSubmit() with hidden inputs,
-  // so the server-action machinery can’t “reset” the visible control.
-  const submitFormRef = useRef<HTMLFormElement>(null);
-
-  const qtyHiddenRef = useRef<HTMLInputElement | null>(null);
-  const clientOpInputRef = useRef<HTMLInputElement | null>(null);
-
   const [val, setVal] = useState(initialQty);
 
-  const { submit: debouncedSubmit, cancel: cancelDebounce } = useDebouncedSubmit(600);
+  const { schedule: scheduleDebounced, cancel: cancelDebounce } = useDebouncedCallback(600);
 
-  // Keep input in sync when server refresh replaces props
-  useEffect(() => {
-    setVal(initialQty);
-  }, [initialQty]);
+  // Prevent a late error handler from “rolling back” a newer qty.
+  const lastOpRef = useRef<string | null>(null);
+
+  // Track the last qty we consider "committed" (best-effort).
+  const lastGoodQtyRef = useRef<number | null>(null);
 
   const parseQty = useCallback((v: string): number | null => {
     const n = parseFloat(v);
     return Number.isFinite(n) && n > 0 ? n : null;
   }, []);
 
-  const applyOpIdAndHiddenFields = useCallback(
-    (opId: string, qty: number) => {
-      if (clientOpInputRef.current) clientOpInputRef.current.value = opId;
-      if (qtyHiddenRef.current) qtyHiddenRef.current.value = String(qty);
+  // Keep input in sync when server refresh/realtime replaces props
+  useEffect(() => {
+    setVal(initialQty);
+    const n = parseQty(initialQty);
+    if (n != null) lastGoodQtyRef.current = n;
+  }, [initialQty, parseQty]);
+
+  const sendQty = useCallback(
+    async (opId: string, qty: number, prevGood: number | null) => {
+      lastOpRef.current = opId;
 
       registerPendingOp({
         id: opId,
@@ -635,8 +672,41 @@ const AutoSaveQtyForm = forwardRef<
         entryIds: [entryId],
         startedAt: Date.now(),
       });
+
+      try {
+        const fd = new FormData();
+        fd.set('date', selectedYMD);
+        fd.set('entry_id', entryId);
+        fd.set('qty', String(qty));
+        fd.set('client_op_id', opId);
+
+        await updateEntryQtyAction(fd);
+
+        // Clear Saving… immediately on server completion
+        completeOp(opId);
+
+        // Only advance the "good" pointer if this is still the latest op.
+        if (lastOpRef.current === opId) {
+          lastGoodQtyRef.current = qty;
+        }
+      } catch (err) {
+        console.error(err);
+        ackOp(opId);
+
+        // Only rollback if this is still the latest attempted qty write.
+        if (lastOpRef.current === opId) {
+          if (prevGood != null) {
+            onQtyOptimistic(prevGood);
+            setVal(String(prevGood));
+          } else {
+            // fallback: revert to the last prop
+            setVal(initialQty);
+          }
+          alert('Update failed. Please try again.');
+        }
+      }
     },
-    [entryId]
+    [entryId, selectedYMD, onQtyOptimistic, initialQty]
   );
 
   const commit = useCallback(
@@ -644,22 +714,20 @@ const AutoSaveQtyForm = forwardRef<
       // Update optimistic UI immediately
       onQtyOptimistic(next);
 
-      const form = submitFormRef.current;
-      if (!form) return;
+      const prevGood = lastGoodQtyRef.current;
 
       if (mode === 'immediate') {
-        // Make sure no old debounced submit is still queued
         cancelDebounce();
         const opId = crypto.randomUUID();
-        applyOpIdAndHiddenFields(opId, next);
-        form.requestSubmit();
+        void sendQty(opId, next, prevGood);
       } else {
-        debouncedSubmit(form, (opId) => {
-          applyOpIdAndHiddenFields(opId, next);
+        scheduleDebounced(() => {
+          const opId = crypto.randomUUID();
+          void sendQty(opId, next, prevGood);
         });
       }
     },
-    [onQtyOptimistic, debouncedSubmit, cancelDebounce, applyOpIdAndHiddenFields]
+    [onQtyOptimistic, sendQty, scheduleDebounced, cancelDebounce]
   );
 
   useImperativeHandle(
@@ -718,7 +786,6 @@ const AutoSaveQtyForm = forwardRef<
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                // Not inside a form anymore, so make Enter behave like “commit”
                 e.preventDefault();
                 e.currentTarget.blur(); // blur triggers immediate commit
               }
@@ -728,19 +795,11 @@ const AutoSaveQtyForm = forwardRef<
           <span>{unit}</span>
         </>
       )}
-
-      {/* Hidden server-action form (no visible controls inside) */}
-      <form ref={submitFormRef} action={updateEntryQtyAction} className="hidden" aria-hidden="true">
-        <input type="hidden" name="date" value={selectedYMD} />
-        <input type="hidden" name="entry_id" value={entryId} />
-        <input ref={qtyHiddenRef} type="hidden" name="qty" defaultValue={initialQty} />
-        <input ref={clientOpInputRef} type="hidden" name="client_op_id" defaultValue="" />
-      </form>
     </div>
   );
 });
 
-/* ----- Checkbox status form (neutral/toned-down) ----- */
+/* ----- Checkbox status form (awaited server action) ----- */
 function CheckboxStatusForm({
   entryId,
   currentStatus,
@@ -817,18 +876,25 @@ function CheckboxStatusForm({
           fd.set('qty', String(qtyToSend));
           fd.set('client_op_id', opId);
 
-          void updateEntryQtyAndStatusAction(fd).catch((err) => {
-            console.error(err);
+          void (async () => {
+            try {
+              await updateEntryQtyAndStatusAction(fd);
 
-            // Clear the pending-op, otherwise “Saving…” can get stuck
-            ackOp(opId);
+              // Clear Saving… immediately on server completion
+              completeOp(opId);
+            } catch (err) {
+              console.error(err);
 
-            // Only rollback if this is still the latest attempted toggle
-            if (lastOpRef.current === opId) {
-              onSubmitOptimistic(prev);
-              alert('Update failed. Please try again.');
+              // Clear the pending-op, otherwise “Saving…” can get stuck
+              ackOp(opId);
+
+              // Only rollback if this is still the latest attempted toggle
+              if (lastOpRef.current === opId) {
+                onSubmitOptimistic(prev);
+                alert('Update failed. Please try again.');
+              }
             }
-          });
+          })();
         }}
       />
     </label>
