@@ -25,7 +25,10 @@ export default async function GoalsPage({
 
   // Auth gate
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?next=/goals');
+  if (!user) {
+    const requested = next ? `/goals?next=${encodeURIComponent(next)}` : '/goals';
+    redirect(`/login?next=${encodeURIComponent(requested)}`);
+  }
 
   // Load goals, newest start_date first
   const { data: goals } = await supabase

@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import ChartsClient from '@/components/ChartsClient';
 import RealtimeBridge from '@/components/realtime/RealtimeBridge';
+import { safeNextPath } from '@/lib/safeNext';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,12 +22,22 @@ type DailyRow  = {
   total_kcal: string | number;
 };
 
-export default async function ChartsPage() {
+export default async function ChartsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const next = safeNextPath(sp.next);
+
   const supabase = await createClient();
 
   // Auth gate
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?next=/charts');
+  if (!user) {
+    const requested = next ? `/charts?next=${encodeURIComponent(next)}` : '/charts';
+    redirect(`/login?next=${encodeURIComponent(requested)}`);
+  }
 
   // Build queries with proper result typing
   const weightsQ = supabase
@@ -95,7 +107,14 @@ export default async function ChartsPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
-      <h1 className="text-2xl font-bold">Charts</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Charts</h1>
+        {next && (
+          <Link href={next} className="rounded border px-2 py-1 text-sm hover:bg-control-hover">
+            ‹ Back to day
+          </Link>
+        )}
+      </div>
       <ChartsClient weights={weightsWithGoal} daily={dailyWithGoal} />
 
       {/* Realtime sync for data feeding Charts */}

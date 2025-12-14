@@ -23,7 +23,8 @@ export default async function CatalogPage({
   // Auth gate: anonymous → /login?next=/catalog
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-     redirect('/login?next=/catalog');
+    const requested = next ? `/catalog?next=${encodeURIComponent(next)}` : '/catalog';
+    redirect(`/login?next=${encodeURIComponent(requested)}`);
   }
 
   const { data: items } = await supabase

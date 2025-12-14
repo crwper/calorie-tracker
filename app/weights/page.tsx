@@ -25,7 +25,10 @@ export default async function WeightsPage({
 
   // Auth gate: anonymous → /login?next=/weights
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login?next=/weights');
+  if (!user) {
+    const requested = next ? `/weights?next=${encodeURIComponent(next)}` : '/weights';
+    redirect(`/login?next=${encodeURIComponent(requested)}`);
+  }
 
   // Fetch weights for the user (newest first)
   const { data: weights } = await supabase
