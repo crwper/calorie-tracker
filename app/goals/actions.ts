@@ -50,6 +50,10 @@ export async function createGoalAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
+  // Goals affect day summaries and charts.
+  revalidatePath('/day/[ymd]');
+  revalidatePath('/charts');
+
   if (intent === 'create_return' && next) {
     revalidatePath(next);
     redirect(next);
@@ -69,5 +73,7 @@ export async function deleteGoalAction(formData: FormData) {
   const { error } = await supabase.from('goals').delete().eq('id', id);
   if (error) throw new Error(error.message);
 
+  revalidatePath('/day/[ymd]');
+  revalidatePath('/charts');
   revalidatePath('/goals');
 }

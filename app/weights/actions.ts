@@ -68,6 +68,10 @@ export async function createWeightAction(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
+  // Weights affect charts; day pages may show related context later too.
+  revalidatePath('/charts');
+  revalidatePath('/day/[ymd]');
+
   if (intent === 'create_return' && next) {
     revalidatePath(next);
     redirect(next);
@@ -87,5 +91,7 @@ export async function deleteWeightAction(formData: FormData) {
   const { error } = await supabase.from('weights').delete().eq('id', id);
   if (error) throw new Error(error.message);
 
+  revalidatePath('/charts');
+  revalidatePath('/day/[ymd]');
   revalidatePath('/weights');
 }
