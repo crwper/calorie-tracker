@@ -1,7 +1,10 @@
 // app/page.tsx
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { todayYMDVancouver } from '@/lib/dates';
+import { todayInTZYMD } from '@/lib/dates';
 
-export default function Root() {
-  redirect(`/day/${todayYMDVancouver()}`);
+export default async function Root() {
+  const ck = await cookies();
+  const tz = ck.get('tz')?.value ?? 'America/Vancouver';
+  redirect(`/day/${todayInTZYMD(tz)}`);
 }
