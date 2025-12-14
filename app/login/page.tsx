@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { loginAction } from '../auth-actions';
 import Alert from '@/components/primitives/Alert';
 import PasswordField from '@/components/auth/PasswordField';
+import { safeNextPath } from '@/lib/safeNext';
 
 export default async function LoginPage({
   searchParams,
@@ -11,7 +12,7 @@ export default async function LoginPage({
   const sp = await searchParams;
   const checkEmail = !!sp['check-email'];
   const err = typeof sp.error === 'string' ? sp.error : null;
-  const next = typeof sp.next === 'string' ? sp.next : '/';
+  const next = safeNextPath(sp.next) ?? '/';
   const reset = sp.reset === '1';
 
   return (
