@@ -11,6 +11,7 @@ import {
   CatalogItemFields,
   type CatalogItemFieldsProps,
 } from '@/components/CatalogAddForm';
+import Alert from '@/components/primitives/Alert';
 
 type Item = {
   id: string;
@@ -197,29 +198,52 @@ function EditRow({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const initialFields = buildInitialFields(item);
+  const [hasNumericError, setHasNumericError] = useState(false);
+
+  const buttonBase = 'rounded border px-3 py-1 text-sm hover:bg-control-hover';
+  const disabledButton = 'opacity-60 cursor-not-allowed hover:bg-transparent';
 
   return (
     <form
       ref={formRef}
       action={updateAction}
       className="space-y-3 rounded-lg border bg-card p-3"
+      onSubmit={(e) => {
+        // Prevent “Enter submits anyway” when fields are invalid.
+        if (hasNumericError) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
     >
       <input type="hidden" name="id" value={item.id} />
 
-      <CatalogItemFields {...initialFields} />
+      <CatalogItemFields
+       {...initialFields}
+        onValidationChange={setHasNumericError}
+     />
+
+      {hasNumericError ? (
+       <Alert tone="error">
+          Some values are invalid. Servings can use positive numbers or simple
+          fractions like <code>3/4</code> or <code>1 1/2</code>, and calories
+          must be positive numbers.
+        </Alert>
+      ) : null}
 
       {/* Row: Save + Cancel */}
       <div className="flex items-center justify-end gap-1 pt-1">
         <button
           type="submit"
-          className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+          className={`${buttonBase} ${hasNumericError ? disabledButton : ''}`}
           title="Save changes"
+          disabled={hasNumericError}
         >
           Save
         </button>
         <button
           type="button"
-          className="rounded border px-3 py-1 text-sm hover:bg-control-hover"
+          className={buttonBase}
           title="Cancel editing"
           onClick={() => {
             // Reset inputs back to defaults and exit edit mode
