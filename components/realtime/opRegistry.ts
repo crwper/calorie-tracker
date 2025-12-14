@@ -35,6 +35,41 @@ function emitChange() {
 }
 
 /**
+ * When we "complete" an op (server action resolved), we clear Saving… immediately,
+ * but keep the op around briefly so Realtime echoes can still be matched/ignored.
+ *
+ * If the echo never arrives (disconnect), we GC completed ops after this TTL so
+ * they don't block future remote updates (hasPendingOpForEntry).
+ */
+const COMPLETE_GC_MS = 5_000;
+const cleanupTimers = new Map<string, number>();
+
+function clearCleanupTimer(id: string) {
+  const t = cleanupTimers.get(id);
+  if (t != null) {
+    window.clearTimeout(t);
+    cleanupTimers.delete(id);
+  }
+}
+
+function scheduleCleanup(id: string) {
+  clearCleanupTimer(id);
+  const t = window.setTimeout(() => {
+    // If still present, drop it.
+    if (pending.has(id)) {
+      pending.delete(id);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[opRegistry] gc', id);
+      }
+      emitChange();
+    }
+    cleanupTimers.delete(id);
+  }, COMPLETE_GC_MS);
+
+  cleanupTimers.set(id, t);
+}
+
+/**
  * Subscribe to any change in the pending-op registry.
  * Returns an unsubscribe function.
  */
@@ -46,6 +81,9 @@ export function subscribeToPendingOps(listener: () => void): () => void {
 }
 
 export function registerPendingOp(op: PendingOp) {
+  // If we re-register an id (should be rare), ensure no stale GC timer remains.
+  clearCleanupTimer(op.id);
+
   pending.set(op.id, op);
   if (process.env.NODE_ENV !== 'production') {
     console.log('[opRegistry] register', op);
@@ -53,10 +91,36 @@ export function registerPendingOp(op: PendingOp) {
   emitChange();
 }
 
+/**
+ * Mark an op as "completed" (server action resolved), which immediately clears
+ * "Saving…" indicators, but keeps the op for a short time so Realtime echoes can
+ * still match and remove it.
+ */
+export function completeOp(id: string) {
+  const op = pending.get(id);
+  if (!op) return;
+
+  pending.set(id, {
+    ...op,
+    // IMPORTANT: empty array means "show Saving… for no entries"
+    savingEntryIds: [],
+  });
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[opRegistry] complete (clear saving)', id, pending.get(id));
+  }
+
+  emitChange();
+  scheduleCleanup(id);
+}
+
 export function ackOp(id: string) {
   const op = pending.get(id);
   if (!op) return;
+
+  clearCleanupTimer(id);
   pending.delete(id);
+
   if (process.env.NODE_ENV !== 'production') {
     console.log('[opRegistry] ack', id, op);
   }
@@ -98,6 +162,7 @@ export function ackOpByEntryId(entryId: string): boolean {
   let matched = false;
   for (const [id, op] of pending.entries()) {
     if (op.entryIds?.includes(entryId)) {
+      clearCleanupTimer(id);
       pending.delete(id);
       matched = true;
       if (process.env.NODE_ENV !== 'production') {
