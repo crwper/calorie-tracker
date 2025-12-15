@@ -1,13 +1,3 @@
-// lib/dates.ts
-export function todayYMDVancouver(): string {
-  const tz = 'America/Vancouver';
-  const now = new Date();
-  const y = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric' }).format(now);
-  const m = new Intl.DateTimeFormat('en-CA', { timeZone: tz, month: '2-digit' }).format(now);
-  const d = new Intl.DateTimeFormat('en-CA', { timeZone: tz, day: '2-digit' }).format(now);
-  return `${y}-${m}-${d}`;
-}
-
 // For previous work that wanted a display TZ
 export function formatYMDLongInTZ(ymd: string, tz = 'America/Vancouver'): string {
   const [y, m, d] = ymd.split('-').map(Number);
@@ -17,8 +7,6 @@ export function formatYMDLongInTZ(ymd: string, tz = 'America/Vancouver'): string
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   }).format(dt);
 }
-
-/* ---------- NEW helpers for literal-date semantics ---------- */
 
 // Default “today” for a given IANA timezone → YYYY-MM-DD (literal date)
 export function todayInTZYMD(tz: string): string {

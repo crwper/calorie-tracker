@@ -2,7 +2,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { todayYMDVancouver, isValidYMD } from '@/lib/dates';
+import { isValidYMD } from '@/lib/dates';
 
 // Simple helper: generate a client op-id for this server action call.
 function newOpId(): string {
@@ -89,8 +89,8 @@ export async function addEntryFromCatalogAction(formData: FormData) {
   if (!user) throw new Error('Must be signed in');
 
   // Selected day from the form (chips live on whatever day you’re viewing)
-  const dateParam = String(formData.get('date') ?? '');
-  const dayDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+  const dayDate = String(formData.get('date') ?? '');
+  if (!isValidYMD(dayDate)) throw new Error('Missing or invalid date');
 
   const itemId = String(formData.get('catalog_item_id') ?? '');
   const mult = Number(formData.get('mult') ?? '1');
@@ -205,13 +205,13 @@ export async function reorderEntriesAction(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Must be signed in');
 
-  const dayDate = isValidYMD(input.date) ? input.date : todayYMDVancouver();
+  if (!isValidYMD(input.date)) throw new Error('Missing or invalid date');
 
   // Get existing day id (don’t silently create a new day if not there)
   const { data: day } = await supabase
     .from('days')
     .select('id')
-    .eq('date', dayDate)
+    .eq('date', input.date)
     .maybeSingle();
 
   if (!day) {

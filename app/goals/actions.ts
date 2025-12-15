@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { isValidYMD, todayYMDVancouver } from '@/lib/dates';
+import { isValidYMD } from '@/lib/dates';
 import { safeNextPath } from '@/lib/safeNext';
 
 function okInt(n: unknown) {
@@ -25,8 +25,8 @@ export async function createGoalAction(formData: FormData) {
   const next = safeNextPath(rawNext);
   const intent = String(formData.get('intent') ?? 'create');
 
-  const dateParam = String(formData.get('start_date') ?? '');
-  const startDate = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+  const startDate = String(formData.get('start_date') ?? '');
+  if (!isValidYMD(startDate)) throw new Error('Missing or invalid date');
 
   const kcalTarget = okInt(formData.get('kcal_target'));
   if (kcalTarget < 200 || kcalTarget > 5000) {

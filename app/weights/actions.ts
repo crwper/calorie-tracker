@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { isValidYMD, todayYMDVancouver } from '@/lib/dates';
+import { isValidYMD } from '@/lib/dates';
 import { safeNextPath } from '@/lib/safeNext';
 
 function okNum(n: unknown) {
@@ -36,8 +36,8 @@ export async function createWeightAction(formData: FormData) {
   const method: 'vet' | 'home_diff' = methodRaw === 'home_diff' ? 'home_diff' : 'vet';
   const unit = String(formData.get('unit') ?? 'kg');
 
-  const dateParam = String(formData.get('date') ?? '');
-  const measuredAt = isValidYMD(dateParam) ? dateParam : todayYMDVancouver();
+  const measuredAt = String(formData.get('date') ?? '');
+  if (!isValidYMD(measuredAt)) throw new Error('Missing or invalid date');
 
   let weightKg: number;
   let meKg: number | null = null;
