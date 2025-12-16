@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Snack Dragon',
     short_name: 'Snack Dragon',
-    description: 'Calorie counting is for the dogs',
+    description: 'Calorie counting for dogs',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
