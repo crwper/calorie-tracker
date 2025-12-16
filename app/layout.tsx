@@ -56,17 +56,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <header className="border-b bg-header">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <Image 
-                src={icon} 
-                alt="Snack Dragon Logo" 
-                width={64} 
-                height={64} 
-                className="rounded-sm"
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src={icon}
+                alt="Snack Dragon Logo"
+                width={64}
+                height={64}
+                className="h-16 w-16 shrink-0 rounded-sm object-contain"
               />
-              <div>
-                <p className="flex items-center gap-2 font-semibold text-xl">Snack Dragon</p>
-                <p className="flex items-center gap-2 text-xs">Calorie counting is for the dogs</p>
+              <div className="flex flex-col">
+                <span className="font-semibold text-xl leading-tight sm:leading-none">
+                  Snack Dragon
+                </span>
+                <span className="hidden sm:block text-xs leading-tight">
+                  Calorie counting is for the dogs
+                </span>
               </div>
             </Link>
             <div className="text-sm">
