@@ -394,25 +394,25 @@ export default function EntriesList({
 
       {/* Totals + optional goal, based on local optimistic state */}
       <div className="space-y-1">
-        <div className="pt-3 mt-2 border-t text-sm flex items-center justify-between">
+        <div className="pt-3 mt-2 border-t text-sm grid grid-cols-2 gap-x-10 gap-y-1">
           <div>
             <span className="font-medium">Planned:</span> {totalPlanned.toFixed(0)} kcal
           </div>
+          <div className="text-right">
+            <span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(0)} kcal
+          </div>
+
           <div>
             <span className="font-medium">Eaten:</span> {totalEaten.toFixed(0)} kcal
           </div>
-          <div>
-            <span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(0)} kcal
-          </div>
+          {activeGoalKcal != null ? (
+            <div className="text-right leading-tight">
+              Goal:&nbsp;
+              <span className="font-medium tabular-nums">{activeGoalKcal.toFixed(0)}</span>
+              &nbsp;kcal
+            </div>
+          ) : null}
         </div>
-
-        {activeGoalKcal != null && (
-          <div className="text-sm flex items-center justify-end leading-tight">
-            Goal:&nbsp;
-            <span className="font-medium tabular-nums">{activeGoalKcal.toFixed(0)}</span>
-            &nbsp;kcal
-          </div>
-        )}
       </div>
     </>
   );
