@@ -109,9 +109,9 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
       {/* Header + date nav */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <h1 className="text-2xl font-bold">{friendly}</h1>
-        <nav className="flex items-center gap-2 text-sm">
+        <nav className="flex items-start gap-2 text-sm">
           <Link
             href={`/day/${prevYMD}`}
             className="rounded border px-2 py-1 hover:bg-control-hover"
