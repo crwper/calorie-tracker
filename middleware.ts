@@ -8,7 +8,6 @@ export async function middleware(request: NextRequest) {
 // Run on all app routes except static assets/images/etc.
 export const config = {
   matcher: [
-    // Exclude any _next/* and common static files regardless of basePath
-    '/((?!_next/|.*\\.(?:css|js|map|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2)$).*)',
+    '/((?!_next/|icon$|manifest\\.webmanifest$|robots\\.txt$|sitemap\\.xml$|.*\\.(?:css|js|map|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2)$).*)',
   ],
 };
