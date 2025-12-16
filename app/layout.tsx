@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from './auth-actions';
 import AppNav from '@/components/AppNav';
 import ClientAuthSync from '@/components/auth/ClientAuthSync';
-import WhoAmI from '@/components/dev/WhoAmI';
 export const dynamic = 'force-dynamic';
 
 const geistSans = Geist({
@@ -67,11 +66,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </div>
             </Link>
             <div className="text-sm">
-              {process.env.NODE_ENV !== 'production' ? (
-                <span className="ml-2">
-                  <WhoAmI />
-                </span>
-              ) : null}
               {user ? (
                 <form action={logoutAction} className="flex items-center gap-3">
                   <span className="text-muted-foreground">Signed in as {user.email}</span>

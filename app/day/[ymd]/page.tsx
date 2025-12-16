@@ -10,7 +10,6 @@ import {
 import { addEntryFromCatalogAction } from '@/app/actions';
 import EntriesList from '@/components/EntriesList';
 import CatalogChipPicker from '@/components/CatalogChipPicker';
-import RefreshNowButton from '@/components/dev/RefreshNowButton';
 import DayEntriesRealtime from '@/components/realtime/DayEntriesRealtime';
 import PendingOpsDebug from '@/components/realtime/PendingOpsDebug';
 import { expectNoError } from '@/lib/supabase/expect';
@@ -175,8 +174,6 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
           />
         </div>
       </section>
-
-      <p className="text-xs text-subtle-foreground">Rendered at {serverRenderAt}</p>
 
       {/* Realtime: scoped to this day; drives fully optimistic updates */}
       <DayEntriesRealtime dayId={dayIdStr} />
