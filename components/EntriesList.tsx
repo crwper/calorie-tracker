@@ -396,14 +396,14 @@ export default function EntriesList({
       <div className="space-y-1">
         <div className="pt-3 mt-2 border-t text-sm grid grid-cols-2 gap-x-10 gap-y-1">
           <div>
-            <span className="font-medium">Planned:</span> {totalPlanned.toFixed(0)} kcal
+            <span className="font-medium">Eaten:</span> {totalEaten.toFixed(0)} kcal
           </div>
           <div className="text-right">
             <span className="font-medium">Total:</span> {(totalPlanned + totalEaten).toFixed(0)} kcal
           </div>
 
           <div>
-            <span className="font-medium">Eaten:</span> {totalEaten.toFixed(0)} kcal
+            <span className="font-medium">Planned:</span> {totalPlanned.toFixed(0)} kcal
           </div>
           {activeGoalKcal != null ? (
             <div className="text-right leading-tight">
