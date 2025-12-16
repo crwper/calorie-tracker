@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Snack Dragon Calorie Counter',
+  title: 'Snack Dragon',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -56,15 +56,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <header className="border-b bg-header">
           <div className="mx-auto max-w-2xl p-3 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
+            <Link href="/" className="flex items-center gap-2">
               <Image 
                 src={icon} 
                 alt="Snack Dragon Logo" 
-                width={32} 
-                height={32} 
+                width={64} 
+                height={64} 
                 className="rounded-sm"
               />
-              <span>Snack Dragon Calorie Counter</span>
+              <div>
+                <p className="flex items-center gap-2 font-semibold text-xl">Snack Dragon</p>
+                <p className="flex items-center gap-2 text-xs">Calorie counting is for the dogs</p>
+              </div>
             </Link>
             <div className="text-sm">
               {process.env.NODE_ENV !== 'production' ? (

@@ -3,9 +3,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Snack Dragon Calorie Counter',
+    name: 'Snack Dragon',
     short_name: 'Snack Dragon',
-    description: 'Calorie counting app for dogs',
+    description: 'Calorie counting is for the dogs',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
