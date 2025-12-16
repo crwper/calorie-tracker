@@ -1,6 +1,7 @@
 // app/day/today/page.tsx
 import Script from 'next/script';
 import Alert from '@/components/primitives/Alert';
+import TodayClientRedirect from './TodayClientRedirect';
 
 function SkeletonChip({ w = 'w-20' }: { w?: string }) {
   return <div className={`h-8 ${w} rounded border bg-chip-face`} />;
@@ -24,6 +25,10 @@ function SkeletonRow() {
 export default function TodayPage() {
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
+      {/* On client-side navigations, beforeInteractive scripts won't rerun.
+          This client redirect handles those cases. */}
+      <TodayClientRedirect />
+
       {/* Resolve "today" in the browser *before* React hydration to minimize the flash. */}
       <Script id="snackdragon-resolve-today" strategy="beforeInteractive">
         {`
