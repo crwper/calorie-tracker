@@ -43,11 +43,38 @@ export function addDaysYMD(ymd: string, days: number): string {
 }
 
 // Format YYYY-MM-DD as “Saturday, October 18, 2025” (timezone-invariant)
+// Ensure "Month Day" stays together on narrow screens (e.g., "October 18").
 export function formatYMDLong(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  return new Intl.DateTimeFormat('en-US', {
+
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC',
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  }).format(dt);
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }).formatToParts(dt);
+
+  // Rebuild string, but glue month + day with NBSP.
+  // Typical order: weekday, literal(", "), month, literal(" "), day, literal(", "), year
+  let out = '';
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+
+    if (p.type === 'month') {
+      const next = parts[i + 1];
+      const next2 = parts[i + 2];
+
+      if (next?.type === 'literal' && next.value === ' ' && next2?.type === 'day') {
+        out += p.value + '\u00A0' + next2.value; // NBSP
+        i += 2; // skip the space + day we just consumed
+        continue;
+      }
+    }
+
+    out += p.value;
+  }
+
+  return out;
 }
