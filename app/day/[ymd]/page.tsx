@@ -117,7 +117,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
             className="rounded border px-2 py-1 hover:bg-control-hover"
             title="Previous day"
           >
-            ← Prev
+            ←
           </Link>
           <Link
             href="/day/today"
@@ -131,11 +131,8 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
             className="rounded border px-2 py-1 hover:bg-control-hover"
             title="Next day"
           >
-            Next →
+            →
           </Link>
-          {process.env.NODE_ENV !== 'production' ? (
-            <RefreshNowButton label="Refresh" />
-          ) : null}
         </nav>
       </div>
 
