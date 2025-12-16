@@ -6,15 +6,27 @@ import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import Alert from '@/components/primitives/Alert';
 import { parsePositiveDecimal } from '@/lib/quantity';
 
+function localTodayYMD(): string {
+  const d = new Date(); // local device time (reflects travel automatically)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function WeightAddForm({
   defaultDate,
   next,
   createAction,
 }: {
-  defaultDate: string;
+  defaultDate?: string;
   next?: string | null;
   createAction: (formData: FormData) => Promise<void>;
 }) {
+  const [date, setDate] = useState(() => {
+    const s = typeof defaultDate === 'string' ? defaultDate.trim() : '';
+    return s ? s : localTodayYMD();
+  });
   const [method, setMethod] = useState<'vet' | 'home_diff'>('vet');
   const [unit, setUnit] = useState<'kg' | 'lb'>('kg');
   const [you, setYou] = useState('');
@@ -87,7 +99,8 @@ export default function WeightAddForm({
           <input
             name="date"
             type="date"
-            defaultValue={defaultDate}
+            value={date}
+            onChange={(e) => setDate(e.currentTarget.value)}
             className="w-full border rounded px-2 py-1 text-sm"
           />
         </div>

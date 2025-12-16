@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import { isValidYMD } from '@/lib/dates';
 
-export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string }) {
+export default function AppNav() {
   const pathname = usePathname();
   const search = useSearchParams();
 
@@ -28,9 +28,8 @@ export default function AppNav({ defaultTodayYMD }: { defaultTodayYMD: string })
     }
   }, [search]);
 
-  const dayRef = pathYMD ?? nextYMD ?? defaultTodayYMD;
+  const dayHref = pathYMD ? `/day/${pathYMD}` : nextYMD ? `/day/${nextYMD}` : '/day/today';
 
-  const dayHref = `/day/${dayRef}`;
   const catalogHref = `/catalog?next=${encodeURIComponent(dayHref)}`;
   const weightsHref = `/weights?next=${encodeURIComponent(dayHref)}`;
   const goalsHref = `/goals?next=${encodeURIComponent(dayHref)}`;

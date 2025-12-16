@@ -1,10 +1,8 @@
 // app/day/[ymd]/page.tsx
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
-  todayInTZYMD,
   isValidYMD,
   addDaysYMD,
   formatYMDLong, // timezone-invariant long label for a YYYY-MM-DD
@@ -22,13 +20,12 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
 
   const supabase = await createClient();
 
-  // Resolve the literal date from the path. If invalid, default using tz cookie (or Vancouver).
-  const cookieStore = await cookies();
-  const tz = cookieStore.get('tz')?.value ?? 'America/Vancouver';
-  const selectedYMD = isValidYMD(ymd) ? ymd : todayInTZYMD(tz);
+  // Resolve the literal date from the path. If invalid, go through /day/today,
+  // which determines "today" in the browser's current timezone.
   if (!isValidYMD(ymd)) {
-    redirect(`/day/${selectedYMD}`);
+    redirect('/day/today');
   }
+  const selectedYMD = ymd;
 
   const friendly = formatYMDLong(selectedYMD);
   const serverRenderAt = new Date().toISOString();
@@ -42,7 +39,6 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   // Nav dates (pure date math on literal YYYY-MM-DD)
   const prevYMD = addDaysYMD(selectedYMD, -1);
   const nextYMD = addDaysYMD(selectedYMD, +1);
-  const todayYMD = todayInTZYMD(tz);
 
   // Ensure a "day" row exists for this date and get its id (creates if needed).
   const { data: dayId, error: dayErr } = await supabase.rpc('get_or_create_day', {
@@ -124,7 +120,7 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
             ← Prev
           </Link>
           <Link
-            href={`/day/${todayYMD}`}
+            href="/day/today"
             className="rounded border px-2 py-1 hover:bg-control-hover"
             title="Jump to today"
           >

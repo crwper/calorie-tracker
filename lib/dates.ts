@@ -1,5 +1,6 @@
 // For previous work that wanted a display TZ
-export function formatYMDLongInTZ(ymd: string, tz = 'America/Vancouver'): string {
+export function formatYMDLongInTZ(ymd: string, tz: string): string {
+  if (!tz) throw new Error('Timezone is required');
   const [y, m, d] = ymd.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
   return new Intl.DateTimeFormat('en-US', {

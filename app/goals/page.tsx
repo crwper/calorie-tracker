@@ -1,9 +1,8 @@
 // app/goals/page.tsx
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { todayInTZYMD, addDaysYMD } from '@/lib/dates';
+import { addDaysYMD } from '@/lib/dates';
 import { createGoalAction } from './actions';
 import GoalAddForm from '@/components/GoalAddForm';
 import DataList from '@/components/primitives/DataList';
@@ -37,10 +36,7 @@ export default async function GoalsPage({
     .order('start_date', { ascending: false })
     .order('created_at', { ascending: false });
 
-  // Default date = today in cookie TZ
-  const ck = await cookies();
-  const tz = ck.get('tz')?.value ?? 'America/Vancouver';
-  const today = todayInTZYMD(tz);
+  // Default date is computed client-side from the browser's current timezone.
 
   // Compute effective end_date for display:
   // for a row at index i (desc order), end = (previous row's start_date) - 1 day
@@ -64,7 +60,7 @@ export default async function GoalsPage({
       {/* Add goal */}
       <section className="space-y-2">
         <h2 className="font-semibold">Add goal</h2>
-        <GoalAddForm defaultDate={today} next={next} createAction={createGoalAction} />
+        <GoalAddForm next={next} createAction={createGoalAction} />
       </section>
 
       {/* List goals */}

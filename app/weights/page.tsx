@@ -1,9 +1,7 @@
 // app/weights/page.tsx
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { todayInTZYMD } from '@/lib/dates';
 import WeightAddForm from '@/components/WeightAddForm';
 import DataList from '@/components/primitives/DataList';
 import WeightListRow from '@/components/WeightListRow';
@@ -37,10 +35,7 @@ export default async function WeightsPage({
     .order('measured_at', { ascending: false })
     .order('created_at', { ascending: false });
 
-  // Default date comes from cookie TZ (same pattern as elsewhere)
-  const ck = await cookies();
-  const tz = ck.get('tz')?.value ?? 'America/Vancouver';
-  const today = todayInTZYMD(tz);
+  // Default date is computed client-side from the browser's current timezone.
 
   return (
     <main className="mx-auto max-w-2xl p-6 space-y-6 font-sans bg-canvas">
@@ -56,7 +51,7 @@ export default async function WeightsPage({
       {/* Add weight */}
       <section className="space-y-2">
         <h2 className="font-semibold">Add weight</h2>
-        <WeightAddForm defaultDate={today} next={next} createAction={createWeightAction} />
+        <WeightAddForm next={next} createAction={createWeightAction} />
       </section>
 
       {/* History */}

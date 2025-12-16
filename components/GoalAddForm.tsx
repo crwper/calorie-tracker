@@ -6,16 +6,27 @@ import RefreshOnActionComplete from '@/components/RefreshOnActionComplete';
 import Alert from '@/components/primitives/Alert';
 import { parsePositiveDecimal } from '@/lib/quantity';
 
+function localTodayYMD(): string {
+  const d = new Date(); // local device time (reflects travel automatically)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function GoalAddForm({
   defaultDate,
   next,
   createAction,
 }: {
-  defaultDate: string;
+  defaultDate?: string;
   next?: string | null;
   createAction: (formData: FormData) => Promise<void>;
 }) {
-  const [startDate, setStartDate] = useState(defaultDate);
+  const [startDate, setStartDate] = useState(() => {
+    const s = typeof defaultDate === 'string' ? defaultDate.trim() : '';
+    return s ? s : localTodayYMD();
+  });
   const [kcalTarget, setKcalTarget] = useState('');
   const [note, setNote] = useState('');
 

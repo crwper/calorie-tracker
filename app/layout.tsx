@@ -7,8 +7,6 @@ import icon from "./icon.png";
 import "./globals.css";
 import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from './auth-actions';
-import { cookies } from 'next/headers';
-import { todayInTZYMD } from '@/lib/dates';
 import AppNav from '@/components/AppNav';
 import ClientAuthSync from '@/components/auth/ClientAuthSync';
 import WhoAmI from '@/components/dev/WhoAmI';
@@ -38,11 +36,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: { session } } = await supabase.auth.getSession();
-
-  // NEW: compute "today" in cookie TZ for nav fallback
-  const ck = await cookies();
-  const tz = ck.get('tz')?.value ?? 'America/Vancouver';
-  const todayYMD = todayInTZYMD(tz);
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
@@ -94,7 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
 
           {/* NEW: app-level nav, only when authenticated */}
-          {user ? <AppNav defaultTodayYMD={todayYMD} /> : null}
+          {user ? <AppNav /> : null}
         </header>
 
         <main>{children}</main>
