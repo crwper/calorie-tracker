@@ -69,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Snack Dragon
                 </span>
                 <span className="hidden sm:block text-xs leading-tight">
-                  Calorie counting is for the dogs
+                  Calorie counting for dogs
                 </span>
               </div>
             </Link>
