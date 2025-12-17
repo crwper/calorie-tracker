@@ -27,7 +27,6 @@ export default async function DayPage({ params }: { params: Promise<{ ymd: strin
   const selectedYMD = ymd;
 
   const friendly = formatYMDLong(selectedYMD);
-  const serverRenderAt = new Date().toISOString();
 
   // Auth gate: anonymous → /login?next=/day/<ymd>
   const { data: { user } } = await supabase.auth.getUser();
