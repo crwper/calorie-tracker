@@ -104,7 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </a>
                 <span aria-hidden="true">·</span>
                 <a className="underline hover:no-underline" href={CONTACT_LINK} target="_blank" rel="noreferrer">
-                  Contact
+                  About Us
                 </a>
                 <span aria-hidden="true">·</span>
                 <a className="underline hover:no-underline" href={PRIVACY_LINK} target="_blank" rel="noreferrer">
