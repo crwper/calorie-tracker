@@ -36,9 +36,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { data: { user } } = await supabase.auth.getUser();
   const { data: { session } } = await supabase.auth.getSession();
 
+  const year = new Date().getFullYear();
+
+  const BLOG_BASE = 'https://blog.snackdragon.app';
+  const BLOG_LINK = BLOG_BASE;
+  const CONTACT_LINK = `${BLOG_BASE}/contact`;
+  const PRIVACY_LINK = `${BLOG_BASE}/privacy`;
+
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>
+      <body className="min-h-dvh flex flex-col">
         {/* Sync server auth state to the browser (and clear on logout) */}
         <ClientAuthSync
           serverUserId={user?.id ?? null}
@@ -84,7 +91,33 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {user ? <AppNav /> : null}
         </header>
 
-        <main>{children}</main>
+        <main className="flex-1">{children}</main>
+
+        <footer className="border-t bg-header">
+          <div className="mx-auto max-w-2xl px-3 py-4 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>© {year} Michael Cooper</span>
+                <span aria-hidden="true">·</span>
+                <a className="underline hover:no-underline" href={BLOG_LINK} target="_blank" rel="noreferrer">
+                  Blog
+                </a>
+                <span aria-hidden="true">·</span>
+                <a className="underline hover:no-underline" href={CONTACT_LINK} target="_blank" rel="noreferrer">
+                  Contact
+                </a>
+                <span aria-hidden="true">·</span>
+                <a className="underline hover:no-underline" href={PRIVACY_LINK} target="_blank" rel="noreferrer">
+                  Privacy
+                </a>
+              </div>
+
+              <div className="text-[11px] leading-snug">
+                For tracking only. Not veterinary advice.
+              </div>
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   );
